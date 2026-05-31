@@ -3,34 +3,32 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
+interface ThemeCtx { theme: Theme; toggleTheme: () => void; }
 
-interface ThemeContextType {
-  theme: Theme;
-  toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeCtx | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("vtasks-theme") as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
+    const saved = localStorage.getItem("vtasks-theme") as Theme | null;
+    const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const initial = saved ?? preferred;
+    setTheme(initial);
+    document.documentElement.classList.toggle("dark", initial === "dark");
+    setMounted(true);
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("vtasks-theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    const next: Theme = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("vtasks-theme", next);
+    document.documentElement.classList.toggle("dark", next === "dark");
   };
+
+  // Evita flash de tema errado no SSR
+  if (!mounted) return <>{children}</>;
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -40,7 +38,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (context === undefined) throw new Error("useTheme must be used within ThemeProvider");
-  return context;
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
+  return ctx;
 }

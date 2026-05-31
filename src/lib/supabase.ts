@@ -4,11 +4,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
+  realtime: { params: { eventsPerSecond: 10 } },
 });
 
 export type Task = {
@@ -37,5 +33,18 @@ export type Project = {
   description: string | null;
   view_type: string | null;
   is_favorite: boolean | null;
+  created_at: string;
+};
+
+export type Expense = {
+  id: string;
+  title: string;
+  description: string | null;
+  amount_brl: number | null;
+  amount_eur: number | null;
+  amount_usd: number | null;
+  currency: 'BRL' | 'EUR' | 'USD';
+  category: string | null;
+  date: string;
   created_at: string;
 };
