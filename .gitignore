@@ -24,3 +24,20 @@ yarn-error.log*
 # misc
 .DS_Store
 *.local
+
+# build artifacts
+tsconfig.tsbuildinfo
+
+# credenciais e arquivos sensíveis
+*.json.key
+client_secret*.json
+*.pem
+*.p12
+
+# arquivos de design e mídia soltos
+*.psd
+*.ai
+*.sketch
+
+# claude
+.claude/
