@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase, isConfigured } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { ListTodo, FileText, LayoutDashboard, Calendar as CalendarIcon, Users, Zap, ArrowRight, Plus, TrendingUp, Clock, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
