@@ -180,7 +180,7 @@ function SortableCard({
               onClick={() => onMove(task, c.id)}
               className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg transition-all"
               style={{ background: "var(--surface-2)", color: "var(--text-faint)", border: "1px solid var(--border)" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text)"; (e.currentTarget as HTMLElement).style.borderColor = col.dot; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text)"; (e.currentTarget as HTMLElement).style.borderColor = c.dot; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-faint)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
             >
               → {c.title}
