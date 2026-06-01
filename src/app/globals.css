@@ -4,47 +4,54 @@
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
-/* ─── Tokens de cor ─────────────────────────────────────── */
+/* ─── Design Tokens ─────────────────────────────────────── */
 :root {
-  --bg:            #f4f4f5;
+  --bg:            #f1f5f9;
   --surface:       #ffffff;
-  --surface-2:     #f9f9fb;
-  --border:        #e4e4e7;
-  --border-subtle: #f0f0f2;
-  --text:          #09090b;
-  --text-muted:    #71717a;
-  --text-faint:    #a1a1aa;
+  --surface-2:     #f8fafc;
+  --surface-3:     #f1f5f9;
+  --border:        #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --text:          #0f172a;
+  --text-muted:    #64748b;
+  --text-faint:    #94a3b8;
   --accent:        #2563eb;
-  --header-bg:     rgba(255,255,255,0.85);
+  --header-bg:     rgba(255,255,255,0.9);
   --sidebar-bg:    #ffffff;
+  --card-shadow:   0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 }
 
-.dark {
+html.dark {
   --bg:            #09090b;
   --surface:       #18181b;
-  --surface-2:     #111113;
-  --border:        #27272a;
-  --border-subtle: #1f1f22;
+  --surface-2:     #27272a;
+  --surface-3:     #18181b;
+  --border:        #3f3f46;
+  --border-subtle: #27272a;
   --text:          #fafafa;
   --text-muted:    #a1a1aa;
-  --text-faint:    #52525b;
+  --text-faint:    #71717a;
   --accent:        #3b82f6;
-  --header-bg:     rgba(9,9,11,0.85);
+  --header-bg:     rgba(9,9,11,0.9);
   --sidebar-bg:    #09090b;
+  --card-shadow:   0 1px 3px rgba(0,0,0,0.4);
 }
 
 /* ─── Base ──────────────────────────────────────────────── */
-html { color-scheme: light; }
-html.dark { color-scheme: dark; }
+html             { color-scheme: light; }
+html.dark        { color-scheme: dark; }
+
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  transition: background 0.25s, color 0.25s;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* ─── Glass header ──────────────────────────────────────── */
+/* ─── Glass ─────────────────────────────────────────────── */
 .glass {
   background: var(--header-bg);
   backdrop-filter: blur(16px);
@@ -56,16 +63,38 @@ body {
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 999px; }
 
-/* ─── Utilitários globais ───────────────────────────────── */
+/* ─── Reutilizáveis ─────────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
+  box-shadow: var(--card-shadow);
 }
 
-/* Animação de entrada suave */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+.input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
 }
-.fade-up { animation: fadeUp 0.25s ease both; }
+.input::placeholder { color: var(--text-faint); }
+.input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* ─── Animações ─────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0);   }
+}
+.fade-up { animation: fadeUp 0.2s ease both; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,125 +1,168 @@
 "use client";
 
 import {
-  Zap,
-  CheckSquare,
-  LayoutDashboard,
-  FileText,
-  Calendar as CalendarIcon,
-  DollarSign,
-  BarChart2,
-  Settings,
-  Menu,
-  X,
+  Zap, CheckSquare, LayoutDashboard, FileText,
+  Calendar, DollarSign, BarChart2, Users, Share2,
+  PanelLeftClose, PanelLeftOpen, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useTheme } from "./ThemeProvider";
 
 const NAV = [
-  { icon: Zap,             label: "Home",        href: "/",          color: "text-amber-500" },
-  { icon: CheckSquare,     label: "Tarefas",      href: "/tasks",     color: "text-blue-500" },
-  { icon: LayoutDashboard, label: "Board",        href: "/board",     color: "text-purple-500" },
-  { icon: FileText,        label: "Notas",        href: "/notes",     color: "text-amber-500" },
-  { icon: CalendarIcon,    label: "Calendário",   href: "/calendar",  color: "text-green-500" },
-  { icon: DollarSign,      label: "Gastos",       href: "/expenses",  color: "text-emerald-500" },
-  { icon: BarChart2,       label: "Relatórios",   href: "/reports",   color: "text-rose-500" },
+  { icon: Zap,             label: "Home",          href: "/",          accent: "#f59e0b" },
+  { icon: CheckSquare,     label: "Tarefas",       href: "/tasks",     accent: "#3b82f6" },
+  { icon: LayoutDashboard, label: "Board",         href: "/board",     accent: "#8b5cf6" },
+  { icon: FileText,        label: "Notas",         href: "/notes",     accent: "#f59e0b" },
+  { icon: Calendar,        label: "Calendário",    href: "/calendar",  accent: "#22c55e" },
+  { icon: DollarSign,      label: "Gastos",        href: "/expenses",  accent: "#10b981" },
+  { icon: Share2,          label: "Compartilhados",href: "/shared",    accent: "#8b5cf6" },
+  { icon: BarChart2,       label: "Relatórios",    href: "/reports",   accent: "#f43f5e" },
+  { icon: Users,           label: "Membros",       href: "/members",   accent: "#8b5cf6" },
 ];
 
+const STORAGE_KEY = "vtasks-sidebar-collapsed";
+
 export function Sidebar() {
-  const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
-  const { theme } = useTheme();
+  const pathname   = usePathname();
+  const { theme }  = useTheme();
+  const [mobileOpen,  setMobileOpen]  = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(STORAGE_KEY) === "1";
+  });
+
+  // Persiste a escolha
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
+
+  const closeM = () => setMobileOpen(false);
 
   return (
     <>
-      {/* Mobile toggle */}
+      {/* ── Mobile toggle ─────────────────────────────────────── */}
       <button
-        onClick={() => setIsOpen(v => !v)}
-        className="md:hidden fixed top-3.5 right-4 z-50 p-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg"
+        onClick={() => setMobileOpen(v => !v)}
+        aria-label="Menu"
+        className="md:hidden fixed top-3 left-3 z-50 w-9 h-9 flex items-center justify-center rounded-xl shadow-lg"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
       >
-        {isOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+        {mobileOpen
+          ? <X className="w-4 h-4" style={{ color: "var(--text)" }} />
+          : <PanelLeftOpen className="w-4 h-4" style={{ color: "var(--text)" }} />}
       </button>
 
-      <aside className={`
-        fixed md:sticky top-0 left-0 z-40 h-screen
-        w-60 flex flex-col
-        bg-[var(--sidebar-bg)] border-r border-[var(--border)]
-        transition-transform duration-300 ease-in-out
-        ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-      `}>
+      {/* ── Overlay mobile ────────────────────────────────────── */}
+      {mobileOpen && (
+        <div
+          onClick={closeM}
+          className="fixed inset-0 z-30 md:hidden"
+          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }}
+        />
+      )}
+
+      {/* ── Sidebar ───────────────────────────────────────────── */}
+      <aside
+        className={`
+          fixed md:sticky top-0 left-0 z-40
+          h-screen flex flex-col
+          transition-all duration-200 ease-out
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          ${collapsed ? "w-[60px]" : "w-52"}
+        `}
+        style={{
+          background: "var(--sidebar-bg)",
+          borderRight: "1px solid var(--border)",
+        }}
+      >
         {/* Logo */}
-        <div className="px-5 pt-5 pb-3">
-          <Link
-            href="/"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2.5 group"
-          >
-            <div className="w-8 h-8 relative flex-shrink-0">
-              <Image
-                src="/logo-dark.png"
-                alt="vTasks Logo"
-                fill
-                className={`object-contain ${theme === "dark" ? "brightness-0 invert" : ""}`}
-              />
-            </div>
-            <span className="font-black text-lg tracking-tight text-[var(--text)]">
-              vTasks<span className="text-blue-600">Pro</span>
-            </span>
-          </Link>
+        <div className={`flex items-center pt-2 pb-1 ${collapsed ? "px-1.5" : "px-1.5"}`}>
+          {collapsed ? (
+            <Link
+              href="/"
+              onClick={closeM}
+              title="vTasksPro"
+              className="flex items-center justify-center w-full h-10 rounded-xl"
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "")}
+            >
+              <div className="w-5 h-5 relative flex-shrink-0">
+                <Image
+                  src={theme === "dark" ? "/vtasks-dark.png" : "/vtasks-light.png"}
+                  alt="vTasks"
+                  fill
+                  sizes="20px"
+                  className="object-contain"
+                />
+              </div>
+            </Link>
+          ) : (
+            <Link href="/" onClick={closeM} className="flex items-center gap-2 px-3 py-2.5 flex-1 min-w-0">
+              <div className="w-7 h-7 relative flex-shrink-0">
+                <Image
+                  src={theme === "dark" ? "/vtasks-dark.png" : "/vtasks-light.png"}
+                  alt="vTasks"
+                  fill
+                  sizes="28px"
+                  className="object-contain"
+                />
+              </div>
+              <span className="font-black text-sm tracking-tight truncate" style={{ color: "var(--text)" }}>
+                vTasks<span style={{ color: "#2563eb" }}>Pro</span>
+              </span>
+            </Link>
+          )}
         </div>
 
-        {/* Divisor */}
-        <div className="mx-4 h-px bg-[var(--border-subtle)]" />
+        <div className="mx-2 h-px" style={{ background: "var(--border-subtle)" }} />
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-          {NAV.map(({ icon: Icon, label, href, color }) => {
+        <nav className="flex-1 overflow-y-auto px-1.5 py-2 space-y-0.5">
+          {NAV.map(({ icon: Icon, label, href, accent }) => {
             const active = pathname === href;
             return (
               <Link
                 key={href}
                 href={href}
-                onClick={() => setIsOpen(false)}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all
-                  ${active
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
-                  }
-                `}
+                onClick={closeM}
+                title={collapsed ? label : undefined}
+                className={`flex items-center rounded-xl text-sm font-semibold transition-all ${collapsed ? "justify-center w-full h-10" : "gap-3 px-3 py-2.5"}`}
+                style={active
+                  ? { background: "#2563eb", color: "#fff", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }
+                  : { color: "var(--text-muted)" }
+                }
+                onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; (e.currentTarget as HTMLElement).style.color = "var(--text)"; } }}
+                onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = ""; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; } }}
               >
-                <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-white" : color}`} />
-                {label}
+                <Icon
+                  className="w-4 h-4 flex-shrink-0"
+                  style={{ color: active ? "#fff" : accent }}
+                />
+                {!collapsed && label}
               </Link>
             );
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-[var(--border)]">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--surface-2)] transition-colors cursor-pointer">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-[10px] flex-shrink-0">
-              VM
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-[var(--text)] truncate">vWeb Marketing</p>
-              <p className="text-[10px] text-[var(--text-faint)] truncate">Equipe</p>
-            </div>
-            <Settings className="w-3.5 h-3.5 text-[var(--text-faint)] flex-shrink-0" />
-          </div>
+        {/* Collapse Toggle Button - FINAL DO MENU */}
+        <div className="p-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ color: "var(--text-faint)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "")}
+          >
+            {collapsed
+              ? <PanelLeftOpen  className="w-4 h-4 flex-shrink-0" />
+              : <PanelLeftClose className="w-4 h-4 flex-shrink-0" />}
+            {!collapsed && <span>Retrair menu</span>}
+          </button>
         </div>
       </aside>
-
-      {/* Overlay mobile */}
-      {isOpen && (
-        <div
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
-        />
-      )}
     </>
   );
 }

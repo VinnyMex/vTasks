@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase, type Expense, type Task } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
 import { BarChart2, TrendingUp, TrendingDown, DollarSign, CheckSquare, Loader2 } from "lucide-react";
 
 const MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -102,6 +103,7 @@ const CAT_COLORS = [
 ];
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,14 +112,15 @@ export default function ReportsPage() {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
 
   const fetchAll = useCallback(async () => {
+    if (!user) return;
     const [er, tr] = await Promise.all([
-      supabase.from("expenses").select("*"),
-      supabase.from("tasks").select("*"),
+      supabase.from("expenses").select("*").eq("user_id", user.id),
+      supabase.from("tasks").select("*").eq("user_id", user.id),
     ]);
     setExpenses(er.data || []);
     setTasks(tr.data || []);
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchAll();
@@ -144,10 +147,18 @@ export default function ReportsPage() {
     ? tasks.filter(t => { const d = ym(t.created_at); return d.year === selYear && d.month === selMonth; })
     : tasks.filter(t => ym(t.created_at).year === selYear);
 
+  // ── Helper: valor total de um gasto (unitário × quantidade) ──────────────
+  function calcVal(e: Expense) {
+    const unit = e.currency === "BRL" ? (e.amount_brl ?? 0)
+               : e.currency === "EUR" ? (e.amount_eur ?? 0)
+               :                        (e.amount_usd ?? 0);
+    return unit * (e.quantity ?? 1);
+  }
+
   // ── Totais ────────────────────────────────────────────────────────────────
-  const totBRL = filteredExp.filter(e => e.currency === "BRL").reduce((s, e) => s + (e.amount_brl || 0), 0);
-  const totEUR = filteredExp.filter(e => e.currency === "EUR").reduce((s, e) => s + (e.amount_eur || 0), 0);
-  const totUSD = filteredExp.filter(e => e.currency === "USD").reduce((s, e) => s + (e.amount_usd || 0), 0);
+  const totBRL = filteredExp.filter(e => e.currency === "BRL").reduce((s, e) => s + calcVal(e), 0);
+  const totEUR = filteredExp.filter(e => e.currency === "EUR").reduce((s, e) => s + calcVal(e), 0);
+  const totUSD = filteredExp.filter(e => e.currency === "USD").reduce((s, e) => s + calcVal(e), 0);
 
   const taskDone  = filteredTasks.filter(t => t.status === "done").length;
   const taskTodo  = filteredTasks.filter(t => t.status === "todo").length;
@@ -158,7 +169,7 @@ export default function ReportsPage() {
   const monthlyBRL = Array.from({ length: 12 }, (_, m) => {
     const sum = expenses
       .filter(e => { const d = ym(e.date); return d.year === selYear && d.month === m && e.currency === "BRL"; })
-      .reduce((s, e) => s + (e.amount_brl || 0), 0);
+      .reduce((s, e) => s + calcVal(e), 0);
     return { month: m, sum };
   });
   const maxMonthly = Math.max(...monthlyBRL.map(x => x.sum), 1);
@@ -166,8 +177,7 @@ export default function ReportsPage() {
   // ── Por categoria ─────────────────────────────────────────────────────────
   const catMap = filteredExp.reduce<Record<string, number>>((acc, e) => {
     const cat = e.category || "Outro";
-    const val = e.amount_brl || e.amount_eur || e.amount_usd || 0;
-    acc[cat] = (acc[cat] || 0) + val;
+    acc[cat] = (acc[cat] || 0) + calcVal(e);
     return acc;
   }, {});
   const cats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
@@ -377,16 +387,12 @@ export default function ReportsPage() {
               </h2>
               <div className="space-y-3">
                 {[...filteredExp]
-                  .sort((a, b) => {
-                    const va = a.amount_brl || a.amount_eur || a.amount_usd || 0;
-                    const vb = b.amount_brl || b.amount_eur || b.amount_usd || 0;
-                    return vb - va;
-                  })
+                  .sort((a, b) => calcVal(b) - calcVal(a))
                   .slice(0, 5)
                   .map(e => {
                     const sym = e.currency === "BRL" ? "R$" : e.currency === "EUR" ? "€" : "$";
-                    const val = e.amount_brl || e.amount_eur || e.amount_usd || 0;
-                    const maxVal = filteredExp.reduce((m, x) => Math.max(m, x.amount_brl || x.amount_eur || x.amount_usd || 0), 0);
+                    const val = calcVal(e);
+                    const maxVal = filteredExp.reduce((m, x) => Math.max(m, calcVal(x)), 0);
                     return (
                       <div key={e.id} className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
