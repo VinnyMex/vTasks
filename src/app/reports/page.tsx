@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase, type Expense, type Task } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { BarChart2, TrendingUp, TrendingDown, DollarSign, CheckSquare, Loader2 } from "lucide-react";
 
 const MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -104,6 +105,8 @@ const CAT_COLORS = [
 
 export default function ReportsPage() {
   const { user } = useAuth();
+  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
+  
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,73 +135,90 @@ export default function ReportsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [fetchAll]);
 
+  // ── Helper: Converte qualquer gasto para Moeda Primária ────────────────────
+  const getValInPrimary = useCallback((e: Expense) => {
+    let originalValue = 0;
+    if (e.currency === "BRL") originalValue = e.amount_brl ?? 0;
+    else if (e.currency === "EUR") originalValue = e.amount_eur ?? 0;
+    else if (e.currency === "USD") originalValue = e.amount_usd ?? 0;
+
+    const totalOrig = originalValue * (e.quantity ?? 1);
+
+    if (e.currency === primaryCurrency) return totalOrig;
+    // Se e.currency !== primaryCurrency, multiplique pela exchangeRate (1 sec = X pri)
+    return totalOrig * exchangeRate;
+  }, [primaryCurrency, exchangeRate]);
+
+  // ── Helper: Converte e Formata valor para Moeda Ativa ──────────────────────
+  const formatActive = useCallback((valInPrimary: number) => {
+    const isPrimary = activeCurrency === 'primary';
+    const currency = isPrimary ? primaryCurrency : secondaryCurrency;
+    const value = isPrimary ? valInPrimary : valInPrimary / exchangeRate;
+    
+    const symbol = currency === "BRL" ? "R$" : (currency === "EUR" ? "€" : (currency === "USD" ? "$" : currency));
+    return `${symbol} ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate]);
+
   // ── Anos disponíveis ──────────────────────────────────────────────────────
-  const years = Array.from(new Set([
+  const years = useMemo(() => Array.from(new Set([
     ...expenses.map(e => new Date(e.date + "T12:00:00").getFullYear()),
     new Date().getFullYear(),
-  ])).sort((a, b) => b - a);
+  ])).sort((a, b) => b - a), [expenses]);
 
   // ── Filtragem ─────────────────────────────────────────────────────────────
-  const filteredExp = view === "month"
+  const filteredExp = useMemo(() => view === "month"
     ? expenses.filter(e => { const d = ym(e.date); return d.year === selYear && d.month === selMonth; })
-    : expenses.filter(e => ym(e.date).year === selYear);
+    : expenses.filter(e => ym(e.date).year === selYear)
+  , [view, expenses, selYear, selMonth]);
 
-  const filteredTasks = view === "month"
+  const filteredTasks = useMemo(() => view === "month"
     ? tasks.filter(t => { const d = ym(t.created_at); return d.year === selYear && d.month === selMonth; })
-    : tasks.filter(t => ym(t.created_at).year === selYear);
+    : tasks.filter(t => ym(t.created_at).year === selYear)
+  , [view, tasks, selYear, selMonth]);
 
-  // ── Helper: valor total de um gasto (unitário × quantidade) ──────────────
-  function calcVal(e: Expense) {
-    const unit = e.currency === "BRL" ? (e.amount_brl ?? 0)
-               : e.currency === "EUR" ? (e.amount_eur ?? 0)
-               :                        (e.amount_usd ?? 0);
-    return unit * (e.quantity ?? 1);
-  }
-
-  // ── Totais ────────────────────────────────────────────────────────────────
-  const totBRL = filteredExp.filter(e => e.currency === "BRL").reduce((s, e) => s + calcVal(e), 0);
-  const totEUR = filteredExp.filter(e => e.currency === "EUR").reduce((s, e) => s + calcVal(e), 0);
-  const totUSD = filteredExp.filter(e => e.currency === "USD").reduce((s, e) => s + calcVal(e), 0);
+  // ── Totais em Moeda Primária ──────────────────────────────────────────────
+  const totalInPrimary = useMemo(() => filteredExp.reduce((s, e) => s + getValInPrimary(e), 0), [filteredExp, getValInPrimary]);
+  const totalInSecondary = useMemo(() => totalInPrimary / exchangeRate, [totalInPrimary, exchangeRate]);
 
   const taskDone  = filteredTasks.filter(t => t.status === "done").length;
-  const taskTodo  = filteredTasks.filter(t => t.status === "todo").length;
-  const taskDoing = filteredTasks.filter(t => t.status === "doing").length;
   const taskTotal = filteredTasks.length;
 
-  // ── Por mês (para gráfico anual BRL) ─────────────────────────────────────
-  const monthlyBRL = Array.from({ length: 12 }, (_, m) => {
-    const sum = expenses
-      .filter(e => { const d = ym(e.date); return d.year === selYear && d.month === m && e.currency === "BRL"; })
-      .reduce((s, e) => s + calcVal(e), 0);
-    return { month: m, sum };
-  });
-  const maxMonthly = Math.max(...monthlyBRL.map(x => x.sum), 1);
+  // ── Por mês (Gráfico Anual na Moeda Ativa) ─────────────────────────────────
+  const monthlyData = useMemo(() => Array.from({ length: 12 }, (_, m) => {
+    const sumPrimary = expenses
+      .filter(e => { const d = ym(e.date); return d.year === selYear && d.month === m; })
+      .reduce((s, e) => s + getValInPrimary(e), 0);
+    return { month: m, sumPrimary };
+  }), [expenses, selYear, getValInPrimary]);
 
-  // ── Por categoria ─────────────────────────────────────────────────────────
-  const catMap = filteredExp.reduce<Record<string, number>>((acc, e) => {
+  const maxMonthlyPrimary = Math.max(...monthlyData.map(x => x.sumPrimary), 0.01);
+
+  // ── Por categoria (Moeda Ativa) ───────────────────────────────────────────
+  const catMapPrimary = useMemo(() => filteredExp.reduce<Record<string, number>>((acc, e) => {
     const cat = e.category || "Outro";
-    acc[cat] = (acc[cat] || 0) + calcVal(e);
+    acc[cat] = (acc[cat] || 0) + getValInPrimary(e);
     return acc;
-  }, {});
-  const cats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
-  const maxCat = Math.max(...cats.map(c => c[1]), 1);
+  }, {}), [filteredExp, getValInPrimary]);
 
-  const donutSlices = cats.map(([label, value], i) => ({
+  const cats = useMemo(() => Object.entries(catMapPrimary).sort((a, b) => b[1] - a[1]), [catMapPrimary]);
+  const maxCatPrimary = Math.max(...cats.map(c => c[1]), 0.01);
+
+  const donutSlices = useMemo(() => cats.map(([label, valuePrimary], i) => ({
     label,
-    value,
+    value: activeCurrency === 'primary' ? valuePrimary : valuePrimary / exchangeRate,
     color: CAT_COLORS[i % CAT_COLORS.length],
-  }));
+  })), [cats, activeCurrency, exchangeRate]);
 
   // ── Comparativo tarefas por status ────────────────────────────────────────
-  const taskSlices = [
-    { label: "A Fazer",      value: taskTodo,  color: "fill-zinc-400" },
-    { label: "Em Andamento", value: taskDoing, color: "fill-blue-500" },
+  const taskSlices = useMemo(() => [
+    { label: "A Fazer",      value: filteredTasks.filter(t => t.status === "todo").length,  color: "fill-zinc-400" },
+    { label: "Em Andamento", value: filteredTasks.filter(t => t.status === "doing").length, color: "fill-blue-500" },
     { label: "Concluídas",   value: taskDone,  color: "fill-emerald-500" },
-  ];
+  ], [filteredTasks, taskDone]);
 
-  function fmtBRL(v: number) {
-    return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
-  }
+  const getCurrencySymbol = (currency: string) => {
+    return currency === "BRL" ? "R$" : (currency === "EUR" ? "€" : (currency === "USD" ? "$" : currency));
+  };
 
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-8">
@@ -214,7 +234,6 @@ export default function ReportsPage() {
 
         {/* Filtros */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Mensal / Anual */}
           <div className="flex bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-1">
             {(["month", "year"] as const).map(v => (
               <button
@@ -229,7 +248,6 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          {/* Ano */}
           <select
             value={selYear}
             onChange={e => setSelYear(Number(e.target.value))}
@@ -238,7 +256,6 @@ export default function ReportsPage() {
             {years.map(y => <option key={y}>{y}</option>)}
           </select>
 
-          {/* Mês (só mensal) */}
           {view === "month" && (
             <select
               value={selMonth}
@@ -260,8 +277,20 @@ export default function ReportsPage() {
           {/* ── KPIs ──────────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: DollarSign,  label: "Total BRL",       value: fmtBRL(totBRL),     color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-              { icon: DollarSign,  label: "Total EUR",       value: `€ ${totEUR.toLocaleString("pt-BR",{minimumFractionDigits:2})}`, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+              { 
+                icon: DollarSign,  
+                label: `Total ${primaryCurrency}`, 
+                value: `${getCurrencySymbol(primaryCurrency)} ${totalInPrimary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 
+                color: "text-emerald-600 dark:text-emerald-400", 
+                bg: "bg-emerald-50 dark:bg-emerald-900/20" 
+              },
+              { 
+                icon: DollarSign,  
+                label: `Total ${secondaryCurrency}`, 
+                value: `${getCurrencySymbol(secondaryCurrency)} ${totalInSecondary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 
+                color: "text-blue-600 dark:text-blue-400", 
+                bg: "bg-blue-50 dark:bg-blue-900/20" 
+              },
               { icon: CheckSquare, label: "Tarefas Feitas",  value: `${taskDone} / ${taskTotal}`, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-900/20" },
               { icon: TrendingUp,  label: "Taxa Conclusão",  value: taskTotal ? `${Math.round((taskDone/taskTotal)*100)}%` : "—", color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-900/20" },
             ].map(({ icon: Icon, label, value, color, bg }) => (
@@ -275,20 +304,20 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          {/* ── Gráfico mensal BRL (só no modo anual) ─────────────────────── */}
+          {/* ── Gráfico Mensal (Moeda Ativa) ────────────────────────────────── */}
           {view === "year" && (
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
               <h2 className="text-sm font-black text-[var(--text)] uppercase tracking-widest mb-5">
-                Gastos BRL por Mês — {selYear}
+                Gastos em {activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency} por Mês — {selYear}
               </h2>
               <div className="space-y-2">
-                {monthlyBRL.map(({ month, sum }) => (
+                {monthlyData.map(({ month, sumPrimary }) => (
                   <Bar
                     key={month}
                     label={MONTHS_PT[month]}
-                    pct={(sum / maxMonthly) * 100}
+                    pct={(sumPrimary / maxMonthlyPrimary) * 100}
                     color="bg-emerald-500"
-                    value={sum > 0 ? fmtBRL(sum) : "—"}
+                    value={sumPrimary > 0 ? formatActive(sumPrimary) : "—"}
                   />
                 ))}
               </div>
@@ -300,7 +329,7 @@ export default function ReportsPage() {
             {/* Gastos por categoria */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
               <h2 className="text-sm font-black text-[var(--text)] uppercase tracking-widest mb-5">
-                Gastos por Categoria
+                Gastos por Categoria ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})
               </h2>
               {cats.length === 0 ? (
                 <p className="text-xs text-[var(--text-faint)] text-center py-8 font-bold uppercase tracking-widest">
@@ -312,13 +341,13 @@ export default function ReportsPage() {
                     <DonutChart slices={donutSlices} />
                   </div>
                   <div className="space-y-2 mt-4">
-                    {cats.map(([cat, val], i) => (
+                    {cats.map(([cat, valPrimary], i) => (
                       <Bar
                         key={cat}
                         label={cat.slice(0, 4)}
-                        pct={(val / maxCat) * 100}
+                        pct={(valPrimary / maxCatPrimary) * 100}
                         color={`bg-${["blue","emerald","amber","rose","purple","cyan","orange","teal"][i % 8]}-500`}
-                        value={`${val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+                        value={formatActive(valPrimary)}
                       />
                     ))}
                   </div>
@@ -339,8 +368,8 @@ export default function ReportsPage() {
               <div className="space-y-3 mt-4">
                 {[
                   { label: "Concluídas", value: taskDone,  color: "bg-emerald-500", pct: taskTotal ? (taskDone/taskTotal)*100 : 0 },
-                  { label: "Andamento",  value: taskDoing, color: "bg-blue-500",    pct: taskTotal ? (taskDoing/taskTotal)*100 : 0 },
-                  { label: "A Fazer",    value: taskTodo,  color: "bg-zinc-400",    pct: taskTotal ? (taskTodo/taskTotal)*100 : 0 },
+                  { label: "Andamento",  value: filteredTasks.filter(t => t.status === "doing").length, color: "bg-blue-500", pct: taskTotal ? (filteredTasks.filter(t => t.status === "doing").length/taskTotal)*100 : 0 },
+                  { label: "A Fazer",    value: filteredTasks.filter(t => t.status === "todo").length,  color: "bg-zinc-400", pct: taskTotal ? (filteredTasks.filter(t => t.status === "todo").length/taskTotal)*100 : 0 },
                 ].map(({ label, value, color, pct }) => (
                   <div key={label} className="flex items-center gap-3">
                     <span className="w-20 text-xs font-bold text-[var(--text-muted)]">{label}</span>
@@ -378,21 +407,19 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* ── Top gastos ─────────────────────────────────────────────────── */}
+          {/* ── Maiores Gastos (Moeda Ativa) ────────────────────────────────── */}
           {filteredExp.length > 0 && (
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
               <h2 className="text-sm font-black text-[var(--text)] uppercase tracking-widest mb-5 flex items-center gap-2">
                 <TrendingDown className="w-4 h-4 text-rose-500" />
-                Maiores Gastos
+                Maiores Gastos ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})
               </h2>
               <div className="space-y-3">
                 {[...filteredExp]
-                  .sort((a, b) => calcVal(b) - calcVal(a))
+                  .sort((a, b) => getValInPrimary(b) - getValInPrimary(a))
                   .slice(0, 5)
                   .map(e => {
-                    const sym = e.currency === "BRL" ? "R$" : e.currency === "EUR" ? "€" : "$";
-                    const val = calcVal(e);
-                    const maxVal = filteredExp.reduce((m, x) => Math.max(m, calcVal(x)), 0);
+                    const valPrimary = getValInPrimary(e);
                     return (
                       <div key={e.id} className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
@@ -403,12 +430,12 @@ export default function ReportsPage() {
                           <div className="bg-[var(--surface-2)] rounded-full h-2 border border-[var(--border-subtle)]">
                             <div
                               className="h-2 rounded-full bg-rose-500 transition-all"
-                              style={{ width: `${(val / maxVal) * 100}%` }}
+                              style={{ width: `${(valPrimary / maxCatPrimary) * 100}%` }}
                             />
                           </div>
                         </div>
                         <span className="text-sm font-black text-rose-600 dark:text-rose-400 tabular-nums w-24 text-right">
-                          {sym} {val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          {formatActive(valPrimary)}
                         </span>
                       </div>
                     );

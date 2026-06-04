@@ -3,40 +3,110 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase, type Task, type Expense } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Loader2, X, ExternalLink } from "lucide-react";
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS    = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-const SYM: Record<string, string>    = { BRL: "R$", EUR: "€", USD: "$" };
-const FLAG: Record<string, string>   = { BRL: "🇧🇷", EUR: "🇪🇺", USD: "🇺🇸" };
+const SYM: Record<string, string>    = { BRL: "R$", EUR: "€", USD: "$", GBP: "£" };
+const FLAG: Record<string, string>   = { BRL: "🇧🇷", EUR: "🇪🇺", USD: "🇺🇸", GBP: "🇬🇧" };
 const CUR_COLOR: Record<string, string> = {
   BRL: "#10b981",   // green
   EUR: "#3b82f6",   // blue
   USD: "#f59e0b",   // amber
 };
-const CUR_BG: Record<string, string> = {
-  BRL: "rgba(16,185,129,0.12)",
-  EUR: "rgba(59,130,246,0.12)",
-  USD: "rgba(245,158,11,0.12)",
-};
 
-function expenseValue(e: Expense): number {
+const getCurrencyColor = (cur: string) => CUR_COLOR[cur] || "#3b82f6";
+const getCurrencyBg = (cur: string) => {
+  const color = getCurrencyColor(cur);
+  return `${color}1F`; // ~12% opacity
+};
+const getFlag = (cur: string) => FLAG[cur] || "💰";
+const getSymbol = (cur: string) => SYM[cur] || cur;
+
+/**
+ * Retorna o valor original do gasto na sua moeda de origem.
+ */
+function getOriginalExpenseValue(e: Expense): number {
+  const qty = e.quantity ?? 1;
   const unit = e.currency === "BRL" ? (e.amount_brl ?? 0)
              : e.currency === "EUR" ? (e.amount_eur ?? 0)
              :                        (e.amount_usd ?? 0);
-  return unit * (e.quantity ?? 1);
+  return unit * qty;
 }
 
-function fmtVal(v: number, currency: string) {
-  return `${SYM[currency]} ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+/**
+ * Converte um valor de uma moeda para outra usando a taxa de câmbio informada.
+ * Assume que a taxa é: 1 Secondary = X Primary.
+ */
+function convertValue(
+  amount: number,
+  from: string,
+  to: string,
+  primary: string,
+  secondary: string,
+  rate: number
+): number {
+  if (from === to) return amount;
+
+  // 1. Converte de 'from' para Primary (base)
+  let valueInPrimary = 0;
+  if (from === primary) {
+    valueInPrimary = amount;
+  } else if (from === secondary) {
+    valueInPrimary = amount * rate;
+  } else {
+    // Se não for nem primary nem secondary, não temos como converter dinamicamente
+    // sem saber a relação. Retornamos o original como fallback.
+    return amount; 
+  }
+
+  // 2. Converte de Primary para 'to'
+  if (to === primary) return valueInPrimary;
+  if (to === secondary) return valueInPrimary / rate;
+
+  return valueInPrimary;
 }
 
-// Agrupa gastos por moeda e retorna totais
+/**
+ * Obtém o valor de um gasto convertido para a moeda alvo.
+ */
+function getConvertedExpenseValue(
+  e: Expense,
+  targetCurrency: string,
+  primary: string,
+  secondary: string,
+  rate: number
+): number {
+  const qty = e.quantity ?? 1;
+  
+  // Se a moeda alvo for uma das colunas fixas do banco, usamos direto para maior precisão
+  if (targetCurrency === "BRL" && e.amount_brl !== null) return e.amount_brl * qty;
+  if (targetCurrency === "EUR" && e.amount_eur !== null) return e.amount_eur * qty;
+  if (targetCurrency === "USD" && e.amount_usd !== null) return e.amount_usd * qty;
+
+  const originalVal = getOriginalExpenseValue(e);
+  if (e.currency === targetCurrency) return originalVal;
+
+  // Caso contrário, usa a taxa de conversão do provider
+  return convertValue(originalVal, e.currency, targetCurrency, primary, secondary, rate);
+}
+
+function fmtVal(v: number, currency: string, compact = false) {
+  const symbol = getSymbol(currency);
+  const formatted = v.toLocaleString("pt-BR", { 
+    minimumFractionDigits: compact ? 0 : 2, 
+    maximumFractionDigits: 2 
+  });
+  return `${symbol} ${formatted}`;
+}
+
+// Agrupa gastos por moeda e retorna totais originais
 function groupByCurrency(expenses: Expense[]) {
   const totals: Record<string, number> = {};
   for (const e of expenses) {
-    totals[e.currency] = (totals[e.currency] ?? 0) + expenseValue(e);
+    totals[e.currency] = (totals[e.currency] ?? 0) + getOriginalExpenseValue(e);
   }
   return totals;
 }
@@ -53,7 +123,14 @@ function DayDetailPopup({
   onAddTask: (text: string) => void;
 }) {
   const [newText, setNewText] = useState("");
+  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
+  
+  const targetCurrency = activeCurrency === "primary" ? primaryCurrency : secondaryCurrency;
+  
   const totals = groupByCurrency(expenses);
+  const totalInActiveCurrency = expenses.reduce((acc, e) => {
+    return acc + getConvertedExpenseValue(e, targetCurrency, primaryCurrency, secondaryCurrency, exchangeRate);
+  }, 0);
 
   return (
     <div
@@ -90,20 +167,25 @@ function DayDetailPopup({
           {/* ── Gastos do dia ─────────────────────────────────────────── */}
           {expenses.length > 0 && (
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest mb-3" style={{ color: "var(--text-faint)" }}>
-                Gastos · {expenses.length}
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>
+                  Gastos · {expenses.length}
+                </p>
+                <p className="text-[11px] font-black" style={{ color: getCurrencyColor(targetCurrency) }}>
+                  Total: {fmtVal(totalInActiveCurrency, targetCurrency)}
+                </p>
+              </div>
 
-              {/* Totais por moeda */}
+              {/* Totais por moeda original */}
               <div className="flex gap-2 flex-wrap mb-3">
                 {Object.entries(totals).map(([cur, total]) => (
                   <div
                     key={cur}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
-                    style={{ background: CUR_BG[cur], border: `1px solid ${CUR_COLOR[cur]}30` }}
+                    style={{ background: getCurrencyBg(cur), border: `1px solid ${getCurrencyColor(cur)}30` }}
                   >
-                    <span className="text-base leading-none">{FLAG[cur]}</span>
-                    <span className="text-xs font-black tabular-nums" style={{ color: CUR_COLOR[cur] }}>
+                    <span className="text-base leading-none">{getFlag(cur)}</span>
+                    <span className="text-xs font-black tabular-nums" style={{ color: getCurrencyColor(cur) }}>
                       {fmtVal(total, cur)}
                     </span>
                   </div>
@@ -113,7 +195,9 @@ function DayDetailPopup({
               {/* Lista de gastos */}
               <div className="space-y-2">
                 {expenses.map(e => {
-                  const val = expenseValue(e);
+                  const valOriginal = getOriginalExpenseValue(e);
+                  const valConverted = getConvertedExpenseValue(e, targetCurrency, primaryCurrency, secondaryCurrency, exchangeRate);
+                  
                   return (
                     <div
                       key={e.id}
@@ -122,16 +206,23 @@ function DayDetailPopup({
                     >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
-                        style={{ background: CUR_BG[e.currency] }}
+                        style={{ background: getCurrencyBg(e.currency) }}
                       >
-                        {FLAG[e.currency]}
+                        {getFlag(e.currency)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-bold truncate" style={{ color: "var(--text)" }}>{e.title}</p>
-                          <span className="text-sm font-black tabular-nums whitespace-nowrap flex-shrink-0" style={{ color: CUR_COLOR[e.currency] }}>
-                            {fmtVal(val, e.currency)}
-                          </span>
+                          <div className="text-right flex-shrink-0">
+                            <span className="text-sm font-black tabular-nums block leading-tight" style={{ color: getCurrencyColor(targetCurrency) }}>
+                              {fmtVal(valConverted, targetCurrency)}
+                            </span>
+                            {e.currency !== targetCurrency && (
+                              <span className="text-[9px] font-bold opacity-60 block" style={{ color: "var(--text-faint)" }}>
+                                {fmtVal(valOriginal, e.currency)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap mt-0.5">
                           {e.description && (
@@ -246,6 +337,7 @@ function DayDetailPopup({
 /* ── Page ──────────────────────────────────────────────────────────────── */
 export default function CalendarPage() {
   const { user } = useAuth();
+  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
   const todayDate = new Date();
   const [current, setCurrent]     = useState({ year: todayDate.getFullYear(), month: todayDate.getMonth() });
   const [tasks, setTasks]         = useState<Task[]>([]);
@@ -253,11 +345,15 @@ export default function CalendarPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
+  const targetCurrency = activeCurrency === "primary" ? primaryCurrency : secondaryCurrency;
+
   const fetchData = useCallback(async () => {
     if (!user) return;
     const y = current.year;
     const m = current.month;
     const monthStr = `${y}-${String(m + 1).padStart(2, "0")}`;
+
+    const lastDay = new Date(y, m + 1, 0).getDate();
 
     const [taskRes, expRes] = await Promise.all([
       supabase
@@ -271,7 +367,7 @@ export default function CalendarPage() {
         .select("*")
         .eq("user_id", user.id)
         .gte("date", `${monthStr}-01`)
-        .lte("date", `${monthStr}-31`),
+        .lte("date", `${monthStr}-${lastDay}`),
     ]);
 
     setTasks(taskRes.data || []);
@@ -391,15 +487,15 @@ export default function CalendarPage() {
 
         {/* Legenda moedas */}
         <div className="flex items-center gap-3 mb-3 flex-shrink-0 flex-wrap">
-          {(["BRL", "EUR", "USD"] as const).map(cur => (
+          {([primaryCurrency, secondaryCurrency] as const).map(cur => (
             <div key={cur} className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
               <span
                 className="w-4 h-4 rounded-md flex items-center justify-center text-[9px]"
-                style={{ background: CUR_BG[cur], border: `1px solid ${CUR_COLOR[cur]}40` }}
+                style={{ background: getCurrencyBg(cur), border: `1px solid ${getCurrencyColor(cur)}40` }}
               >
-                {FLAG[cur]}
+                {getFlag(cur)}
               </span>
-              {cur}
+              {cur} ({getSymbol(cur)})
             </div>
           ))}
           <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
@@ -434,8 +530,11 @@ export default function CalendarPage() {
               {cells.map((day, i) => {
                 const dayTasks    = day ? getTasksForDay(day) : [];
                 const dayExpenses = day ? getExpensesForDay(day) : [];
-                const curGroups   = day ? groupByCurrency(dayExpenses) : {};
                 const hasEvents   = dayTasks.length > 0 || dayExpenses.length > 0;
+
+                const dayTotalActive = dayExpenses.reduce((acc, e) => {
+                    return acc + getConvertedExpenseValue(e, targetCurrency, primaryCurrency, secondaryCurrency, exchangeRate);
+                }, 0);
 
                 return (
                   <div
@@ -468,22 +567,19 @@ export default function CalendarPage() {
                           {day}
                         </span>
 
-                        {/* Ícones de moeda */}
-                        {Object.keys(curGroups).length > 0 && (
-                          <div className="flex flex-wrap gap-0.5 mb-0.5">
-                            {Object.entries(curGroups).map(([cur, total]) => (
-                              <div
-                                key={cur}
-                                className="flex items-center gap-0.5 px-1 py-0.5 rounded-md"
-                                style={{ background: CUR_BG[cur], border: `1px solid ${CUR_COLOR[cur]}35` }}
-                                title={`${FLAG[cur]} ${fmtVal(total, cur)}`}
-                              >
-                                <span className="text-[8px] leading-none">{FLAG[cur]}</span>
-                                <span className="text-[7px] md:text-[8px] font-black tabular-nums hidden md:inline" style={{ color: CUR_COLOR[cur] }}>
-                                  {SYM[cur]}{total.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                                </span>
-                              </div>
-                            ))}
+                        {/* Total do dia na moeda ativa */}
+                        {dayExpenses.length > 0 && (
+                          <div className="flex flex-wrap gap-0.5 mb-1">
+                            <div
+                              className="flex items-center gap-0.5 px-1 py-0.5 rounded-md"
+                              style={{ background: getCurrencyBg(targetCurrency), border: `1px solid ${getCurrencyColor(targetCurrency)}35` }}
+                              title={`Gasto Total: ${fmtVal(dayTotalActive, targetCurrency)}`}
+                            >
+                              <span className="text-[8px] leading-none">{getFlag(targetCurrency)}</span>
+                              <span className="text-[7px] md:text-[8px] font-black tabular-nums" style={{ color: getCurrencyColor(targetCurrency) }}>
+                                {fmtVal(dayTotalActive, targetCurrency, true)}
+                              </span>
+                            </div>
                           </div>
                         )}
 
@@ -504,7 +600,7 @@ export default function CalendarPage() {
                           ))}
                           {(dayTasks.length > 1 || (dayTasks.length > 0 && dayExpenses.length > 0)) && (
                             <p className="text-[8px] font-bold px-1" style={{ color: "var(--text-faint)" }}>
-                              +{dayTasks.length - 1 + (dayExpenses.length > 0 ? dayExpenses.length : 0)} mais
+                              +{dayTasks.length - 1 + (dayExpenses.length > 0 ? 1 : 0)} mais
                             </p>
                           )}
                         </div>
@@ -513,7 +609,7 @@ export default function CalendarPage() {
                         {hasEvents && (
                           <span
                             className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full md:hidden"
-                            style={{ background: dayExpenses.length > 0 ? CUR_COLOR[Object.keys(curGroups)[0]] : "#3b82f6" }}
+                            style={{ background: dayExpenses.length > 0 ? getCurrencyColor(targetCurrency) : "#3b82f6" }}
                           />
                         )}
                       </>

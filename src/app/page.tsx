@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
-import { ListTodo, FileText, LayoutDashboard, Calendar as CalendarIcon, Users, Zap, ArrowRight, Plus, TrendingUp, Clock, ChevronRight, Star } from "lucide-react";
+import { ListTodo, FileText, Calendar as CalendarIcon, Users, Zap, ArrowRight, Plus, TrendingUp, Clock, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -73,14 +73,12 @@ export default function Home() {
 
   const statCards = [
     { icon: ListTodo,       label: "Tarefas Ativas", value: stats.tasks, iconColor: "#3b82f6", bg: "rgba(59,130,246,0.1)",  href: "/tasks" },
-    { icon: LayoutDashboard,label: "Em Andamento",   value: stats.doing, iconColor: "#8b5cf6", bg: "rgba(139,92,246,0.1)", href: "/board" },
     { icon: FileText,       label: "Notas",           value: stats.notes, iconColor: "#f59e0b", bg: "rgba(245,158,11,0.1)", href: "/notes" },
     { icon: Zap,            label: "Concluídas",      value: stats.done,  iconColor: "#22c55e", bg: "rgba(34,197,94,0.1)",  href: "/tasks" },
   ];
 
   const quickLinks = [
     { icon: ListTodo,       label: "Gerenciar Tarefas",  desc: "Adicione, complete e organize",   href: "/tasks",    iconColor: "#3b82f6", bg: "rgba(59,130,246,0.1)"  },
-    { icon: LayoutDashboard,label: "Quadro Kanban",       desc: "Visualize o fluxo de trabalho",   href: "/board",    iconColor: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
     { icon: FileText,       label: "Minhas Notas",        desc: "Escreva e salve automaticamente", href: "/notes",    iconColor: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
     { icon: CalendarIcon,   label: "Calendário",          desc: "Tarefas e gastos por data",       href: "/calendar", iconColor: "#22c55e", bg: "rgba(34,197,94,0.1)"  },
   ];

@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, type Note } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { logActivity } from "@/lib/useActivityLog";
-import { useRoleMap, resolveRole, canEdit, canDelete } from "@/lib/useMyRole";
+import { useRoleMap, resolveRole, canEdit, canDelete, type Role } from "@/lib/useMyRole";
 import { useEmailById } from "@/lib/useEmailById";
 import { ShareItemModal } from "@/components/ShareItemModal";
 import {
   FileText, Plus, Search, Trash2, Loader2, Save, X,
   Bold, Italic, Strikethrough, Link2, Image as ImageIcon,
-  List, ListOrdered, Minus, Share2, Lock,
+  List, ListOrdered, Minus, Share2, Lock, ChevronLeft,
+  CheckSquare,
 } from "lucide-react";
 
 /* ── Barra de ferramentas do editor ─────────────────────────────────── */
@@ -145,6 +146,68 @@ function RichEditor({
     exec("insertHTML", "<hr style='border:none;border-top:1px solid var(--border);margin:12px 0' /><br>");
   }
 
+  function insertChecklist() {
+    // Insere uma estrutura de checklist
+    exec("insertHTML", `
+      <div class="note-task" data-status="todo" contenteditable="false">
+        <span class="task-toggle"></span>
+        <div class="task-content" contenteditable="true">Nova tarefa...</div>
+        <button class="task-delete" title="Excluir tarefa">×</button>
+      </div>
+      <p><br></p>
+    `);
+  }
+
+  // Handle clicks on task toggles, delete buttons, or links
+  function handleEditorClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    const link = target.closest("a");
+
+    // Lógica para Links
+    if (link) {
+      const url = link.getAttribute("href");
+      if (!url) return;
+
+      const isMobile = window.innerWidth < 768;
+      const isCtrl = e.ctrlKey || e.metaKey;
+
+      // Se for mobile ou se for PC com CTRL pressionado
+      if (isMobile || isCtrl) {
+        e.preventDefault();
+        if (window.confirm(`Deseja abrir este link?\n\n${url}`)) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+        return;
+      }
+      
+      // No PC sem CTRL, deixa o comportamento padrão do contenteditable (que é permitir edição)
+      return;
+    }
+    
+    // Toggle status
+    if (target.classList.contains("task-toggle")) {
+      const parent = target.closest(".note-task") as HTMLElement;
+      if (parent) {
+        const current = parent.getAttribute("data-status");
+        let next = "todo";
+        if (current === "todo") next = "doing";
+        else if (current === "doing") next = "done";
+        else next = "todo";
+        parent.setAttribute("data-status", next);
+        handleInput();
+      }
+    }
+
+    // Delete task
+    if (target.classList.contains("task-delete")) {
+      const parent = target.closest(".note-task") as HTMLElement;
+      if (parent) {
+        parent.remove();
+        handleInput();
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar — oculta no modo somente leitura */}
@@ -167,6 +230,11 @@ function RichEditor({
             </span>
           );
         })}
+
+        <span className="w-px h-4 mx-1" style={{ background: "var(--border)" }} />
+
+        {/* Checklist */}
+        <ToolButton icon={CheckSquare} title="Inserir lista de tarefas" onClick={insertChecklist} />
 
         <span className="w-px h-4 mx-1" style={{ background: "var(--border)" }} />
 
@@ -242,6 +310,7 @@ function RichEditor({
           onKeyUp={readOnly ? undefined : updateActiveFormats}
           onMouseUp={readOnly ? undefined : updateActiveFormats}
           onPaste={readOnly ? undefined : handlePaste}
+          onClick={readOnly ? undefined : handleEditorClick}
           data-placeholder={readOnly ? "" : "Comece a escrever, cole uma imagem ou link..."}
           className="rich-editor outline-none min-h-full p-6 md:p-10 max-w-3xl mx-auto text-base leading-relaxed"
           style={{ color: "var(--text)", background: "transparent", cursor: readOnly ? "default" : "text" }}
@@ -258,7 +327,7 @@ function NoteItem({ note, selected, onSelect, onDelete, onShare, role, emailById
   onSelect: (n: Note) => void;
   onDelete: (id: string) => void;
   onShare?: (n: Note) => void;
-  role: import("@/lib/useMyRole").Role | null;
+  role: Role | null;
   emailById?: Record<string, string>;
 }) {
   const isActive    = selected?.id === note.id;
@@ -483,13 +552,81 @@ export default function NotesPage() {
         .rich-editor s, .rich-editor strike { text-decoration: line-through; }
         .rich-editor hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
         .rich-editor p  { margin: 0 0 4px 0; }
+
+        /* Checklist Styles */
+        .note-task {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin: 6px 0;
+          padding: 4px 8px;
+          border-radius: 8px;
+          transition: background 0.2s;
+          position: relative;
+        }
+        .note-task:hover { background: var(--surface-2); }
+        .task-toggle {
+          width: 18px;
+          height: 18px;
+          border-radius: 4px;
+          border: 2px solid var(--border);
+          margin-top: 2px;
+          cursor: pointer;
+          flex-shrink: 0;
+          position: relative;
+          transition: all 0.2s;
+        }
+        .note-task[data-status="doing"] .task-toggle {
+          border-color: #f59e0b;
+          background: rgba(245,158,11,0.1);
+        }
+        .note-task[data-status="doing"] .task-toggle::after {
+          content: "";
+          position: absolute;
+          top: 4px; left: 4px; right: 4px; bottom: 4px;
+          background: #f59e0b;
+          border-radius: 1px;
+        }
+        .note-task[data-status="done"] .task-toggle {
+          border-color: #22c55e;
+          background: #22c55e;
+        }
+        .note-task[data-status="done"] .task-toggle::after {
+          content: "✓";
+          position: absolute;
+          top: -2px; left: 2px;
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+        }
+        .note-task[data-status="done"] .task-content {
+          text-decoration: line-through;
+          color: var(--text-faint);
+        }
+        .task-content {
+          flex: 1;
+          outline: none;
+          min-height: 20px;
+        }
+        .task-delete {
+          opacity: 0;
+          color: var(--text-faint);
+          font-size: 18px;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0 4px;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }
+        .note-task:hover .task-delete { opacity: 1; }
+        .task-delete:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
       `}</style>
 
       <div className="flex overflow-hidden" style={{ height: "calc(100vh - 3.5rem)" }}>
 
-        {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+        {/* ── Sidebar (List View) ────────────────────────────────────────── */}
         <div
-          className={`flex-shrink-0 flex flex-col transition-all duration-200 ${showSidebar ? "w-64" : "w-0 overflow-hidden"}`}
+          className={`flex-shrink-0 flex flex-col transition-all duration-200 ${showSidebar ? "w-full md:w-64" : "w-0 overflow-hidden"}`}
           style={{ borderRight: "1px solid var(--border)", background: "var(--sidebar-bg)" }}
         >
           {/* Header */}
@@ -551,17 +688,27 @@ export default function NotesPage() {
           </div>
         </div>
 
-        {/* ── Editor ──────────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden" style={{ background: "var(--bg)" }}>
+        {/* ── Editor (Editor View) ───────────────────────────────────────── */}
+        <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${showSidebar ? "hidden md:flex" : "flex"}`} style={{ background: "var(--bg)" }}>
 
           {/* Topbar do editor */}
           <div
             className="px-4 py-2.5 flex items-center justify-between flex-shrink-0 gap-3"
             style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}
           >
+            {/* Back button (Mobile only) */}
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
+              style={{ color: "var(--text-faint)" }}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            {/* Desktop Sidebar Toggle */}
             <button
               onClick={() => setShowSidebar(v => !v)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
+              className="hidden md:flex w-8 h-8 flex items-center justify-center rounded-xl transition-colors flex-shrink-0"
               style={{ color: "var(--text-faint)" }}
               onMouseEnter={ev => (ev.currentTarget.style.background = "var(--surface-2)")}
               onMouseLeave={ev => (ev.currentTarget.style.background = "")}
@@ -579,6 +726,17 @@ export default function NotesPage() {
                 "Auto-save ativo"
               ) : ""}
             </span>
+
+            {selected && (selectedRole === "owner" || selectedRole === "admin") && (
+              <button
+                onClick={() => setShareTarget(selected)}
+                className="p-2 rounded-xl transition-all flex-shrink-0"
+                style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                title="Compartilhar nota"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            )}
 
             {!showSidebar && (
               <button
@@ -625,7 +783,7 @@ export default function NotesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center">
                 <FileText className="w-14 h-14 mx-auto mb-4" style={{ color: "var(--border)" }} />
                 <p className="text-xs font-black uppercase tracking-widest mb-5" style={{ color: "var(--text-faint)" }}>

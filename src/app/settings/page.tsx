@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import { Settings, Moon, Sun, Bell, Shield, Users, Info, Check, ChevronRight } from "lucide-react";
+import { useCurrency } from "@/components/CurrencyProvider";
+import { Settings, Moon, Sun, Bell, Shield, Users, Info, Check, ChevronRight, DollarSign, RefreshCw } from "lucide-react";
 import Image from "next/image";
 
 /* ── Toggle — nunca é button, evita aninhamento inválido ─────────────── */
@@ -116,6 +117,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /* ── Page ─────────────────────────────────────────────────────────────── */
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
+  const { primaryCurrency, secondaryCurrency, exchangeRate, setPrimaryCurrency, setSecondaryCurrency, setExchangeRate } = useCurrency();
   const [notif, setNotif]     = useState(true);
   const [sound, setSound]     = useState(false);
   const [compact, setCompact] = useState(false);
@@ -151,6 +153,63 @@ export default function SettingsPage() {
             <p className="font-black text-base" style={{ color: "var(--text)" }}>vWeb Marketing</p>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>Administrador · Equipe</p>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>Login Google em breve</p>
+          </div>
+        </div>
+      </Section>
+
+      {/* Moeda e Câmbio */}
+      <Section title="Moeda e Câmbio">
+        <div className="px-5 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--text-faint)" }}>
+                Moeda Principal
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                <DollarSign className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  value={primaryCurrency}
+                  onChange={(e) => setPrimaryCurrency(e.target.value.toUpperCase())}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-bold w-full p-0"
+                  style={{ color: "var(--text)" }}
+                  placeholder="BRL"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--text-faint)" }}>
+                Moeda Secundária
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                <RefreshCw className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  value={secondaryCurrency}
+                  onChange={(e) => setSecondaryCurrency(e.target.value.toUpperCase())}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-bold w-full p-0"
+                  style={{ color: "var(--text)" }}
+                  placeholder="EUR"
+                />
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--text-faint)" }}>
+              Taxa de Câmbio (1 {secondaryCurrency} = X {primaryCurrency})
+            </label>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <RefreshCw className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
+              <input
+                type="number"
+                value={exchangeRate}
+                onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                step="0.01"
+                className="bg-transparent border-none focus:ring-0 text-sm font-bold w-full p-0"
+                style={{ color: "var(--text)" }}
+                placeholder="6.20"
+              />
+            </div>
           </div>
         </div>
       </Section>

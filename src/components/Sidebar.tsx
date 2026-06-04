@@ -1,9 +1,9 @@
 "use client";
 
 import {
-  Zap, CheckSquare, LayoutDashboard, FileText,
+  Zap, CheckSquare, FileText,
   Calendar, DollarSign, BarChart2, Users, Share2,
-  PanelLeftClose, PanelLeftOpen, X,
+  PanelLeftClose, PanelLeftOpen, X, Plane
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,13 +14,13 @@ import { useTheme } from "./ThemeProvider";
 const NAV = [
   { icon: Zap,             label: "Home",          href: "/",          accent: "#f59e0b" },
   { icon: CheckSquare,     label: "Tarefas",       href: "/tasks",     accent: "#3b82f6" },
-  { icon: LayoutDashboard, label: "Board",         href: "/board",     accent: "#8b5cf6" },
   { icon: FileText,        label: "Notas",         href: "/notes",     accent: "#f59e0b" },
   { icon: Calendar,        label: "Calendário",    href: "/calendar",  accent: "#22c55e" },
   { icon: DollarSign,      label: "Gastos",        href: "/expenses",  accent: "#10b981" },
   { icon: Share2,          label: "Compartilhados",href: "/shared",    accent: "#8b5cf6" },
   { icon: BarChart2,       label: "Relatórios",    href: "/reports",   accent: "#f43f5e" },
   { icon: Users,           label: "Membros",       href: "/members",   accent: "#8b5cf6" },
+  { icon: Plane,           label: "Proj Espanha",  href: "/espanha",   accent: "#f43f5e" },
 ];
 
 const STORAGE_KEY = "vtasks-sidebar-collapsed";
@@ -47,12 +47,12 @@ export function Sidebar() {
       <button
         onClick={() => setMobileOpen(v => !v)}
         aria-label="Menu"
-        className="md:hidden fixed top-3 left-3 z-50 w-9 h-9 flex items-center justify-center rounded-xl shadow-lg"
+        className="md:hidden fixed bottom-4 left-4 z-50 w-12 h-12 flex items-center justify-center rounded-2xl shadow-2xl transition-all active:scale-90"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
       >
         {mobileOpen
-          ? <X className="w-4 h-4" style={{ color: "var(--text)" }} />
-          : <PanelLeftOpen className="w-4 h-4" style={{ color: "var(--text)" }} />}
+          ? <X className="w-5 h-5" style={{ color: "var(--text)" }} />
+          : <PanelLeftOpen className="w-5 h-5" style={{ color: "var(--text)" }} />}
       </button>
 
       {/* ── Overlay mobile ────────────────────────────────────── */}

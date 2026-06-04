@@ -1,11 +1,13 @@
 "use client";
 
 import { useTheme } from "@/components/ThemeProvider";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import {
   Moon, Sun, Plus, CheckSquare,
-  DollarSign, LayoutDashboard, X, StickyNote, Settings, LogOut, Activity,
+  DollarSign, X, StickyNote, Settings, LogOut, Activity,
+  RefreshCw,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
@@ -15,12 +17,12 @@ import { useRouter } from "next/navigation";
 const ACTIONS = [
   { icon: CheckSquare,     label: "Nova Tarefa",     desc: "Adicionar à lista de tarefas",    href: "/tasks",    color: "#3b82f6", bg: "rgba(59,130,246,0.10)" },
   { icon: StickyNote,      label: "Nova Nota",        desc: "Criar nota no editor",             href: "/notes",    color: "#f59e0b", bg: "rgba(245,158,11,0.10)" },
-  { icon: LayoutDashboard, label: "Novo Card Kanban", desc: "Adicionar ao Board",               href: "/board",    color: "#8b5cf6", bg: "rgba(139,92,246,0.10)" },
   { icon: DollarSign,      label: "Novo Gasto",       desc: "Registrar despesa financeira",     href: "/expenses", color: "#10b981", bg: "rgba(16,185,129,0.10)" },
 ];
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
+  const { activeCurrency, primaryCurrency, secondaryCurrency, toggleActiveCurrency } = useCurrency();
   const { user }               = useAuth();
   const [open, setOpen]        = useState(false);
   const [userMenu, setUserMenu] = useState(false);
@@ -88,6 +90,21 @@ export function Header() {
 
       {/* ── Direita ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2" ref={menuRef}>
+
+        {/* Toggle Moeda */}
+        <button
+          onClick={toggleActiveCurrency}
+          aria-label="Alternar moeda"
+          className="h-9 px-2 flex items-center gap-1.5 rounded-xl transition-colors"
+          style={{ color: "var(--text-muted)" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "")}
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span className="text-[11px] font-black uppercase tracking-tighter">
+            {activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency}
+          </span>
+        </button>
 
         {/* Toggle tema */}
         <button

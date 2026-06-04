@@ -1,14 +1,10 @@
-﻿-- ==========================================
+-- ==========================================
 -- SQL DEFINITIVO vTasks Pro (Executar no Supabase)
 -- ==========================================
+-- ESTE SCRIPT É SEGURO: Não apaga dados existentes.
 
--- 1. Limpar tabelas existentes (Cuidado: deleta dados atuais)
-drop table if exists notes;
-drop table if exists tasks;
-drop table if exists projects;
-
--- 2. Criar tabela de projetos
-create table projects (
+-- 1. Criar tabela de projetos (se não existir)
+create table if not exists projects (
   id uuid default gen_random_uuid() primary key,
   title text not null,
   description text,
@@ -17,47 +13,134 @@ create table projects (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Criar tabela de tarefas
-create table tasks (
+-- 2. Criar tabela de tarefas (se não existir)
+create table if not exists tasks (
   id uuid default gen_random_uuid() primary key,
   project_id uuid references projects(id) on delete cascade,
+  user_id uuid references auth.users(id),
   content text not null,
-  status text default 'todo', -- 'todo', 'doing', 'done'
-  priority text default 'medium', -- 'low', 'medium', 'high'
+  status text default 'todo',
+  priority text default 'medium',
   due_date timestamp with time zone,
   position int default 0,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default now()
 );
 
--- 4. Criar tabela de notas (Anexas aos projetos)
-create table notes (
+-- 3. Criar tabela de notas (se não existir)
+create table if not exists notes (
   id uuid default gen_random_uuid() primary key,
   project_id uuid references projects(id) on delete cascade,
+  user_id uuid references auth.users(id),
+  title text,
   content text not null,
-  type text default 'quick', -- 'quick', 'rich'
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  type text default 'quick',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default now(),
+  updated_by uuid references auth.users(id)
 );
+
+-- 4. Garantir que as colunas existam
+do $$ 
+begin
+  if not exists (select 1 from information_schema.columns where table_name='notes' and column_name='user_id') then
+    alter table notes add column user_id uuid references auth.users(id);
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='notes' and column_name='title') then
+    alter table notes add column title text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='tasks' and column_name='user_id') then
+    alter table tasks add column user_id uuid references auth.users(id);
+  end if;
+end $$;
 
 -- 5. Habilitar Segurança (RLS)
 alter table projects enable row level security;
 alter table tasks enable row level security;
 alter table notes enable row level security;
 
--- 6. Criar Políticas de Acesso Público (Uso Familiar via Link)
-create policy "Permitir tudo para todos - Projetos" on projects for all using (true) with check (true);
-create policy "Permitir tudo para todos - Tarefas" on tasks for all using (true) with check (true);
-create policy "Permitir tudo para todos - Notas" on notes for all using (true) with check (true);
+-- 6. Políticas de Acesso
+drop policy if exists "Acesso individual - Projetos" on projects;
+create policy "Acesso individual - Projetos" on projects for all using (true) with check (true);
+
+drop policy if exists "Acesso individual - Notas" on notes;
+create policy "Acesso individual - Notas" on notes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "Acesso individual - Tarefas" on tasks;
+create policy "Acesso individual - Tarefas" on tasks for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- 7. Ativar Sincronização em Tempo Real (Realtime)
-begin;
-  -- Verifica se a publicação existe antes de criar
-  do $$ 
+do $$ 
+begin
+  -- Cria a publicação se não existir
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    create publication supabase_realtime;
+  end if;
+
+  -- Adiciona as tabelas (usando exceção interna para evitar erro se já existirem)
   begin
-    if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-      create publication supabase_realtime;
-    end if;
-  end $$;
-  
-  -- Adiciona as tabelas à publicação realtime
-  alter publication supabase_realtime add table projects, tasks, notes;
-commit;
+    alter publication supabase_realtime add table projects, tasks, notes;
+  exception when others then
+    -- Ignora se já estiverem na publicação
+  end;
+end $$;
+
+-- 8. Criar tabela de cenários da Espanha
+create table if not exists espanha_scenarios (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  name text not null,
+  author text,
+  budget numeric not null,
+  form_data jsonb not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default now()
+);
+
+alter table espanha_scenarios enable row level security;
+
+drop policy if exists "Acesso individual - Cenários Espanha" on espanha_scenarios;
+create policy "Acesso individual - Cenários Espanha" on espanha_scenarios for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 9. Criar tabela de gastos (se não existir) e coluna de comprovante
+create table if not exists expenses (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  title text not null,
+  description text,
+  recipient text,
+  quantity numeric default 1,
+  amount_brl numeric,
+  amount_eur numeric,
+  amount_usd numeric,
+  currency text not null default 'BRL',
+  category text,
+  date date not null default current_date,
+  link text,
+  receipt_url text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default now(),
+  updated_by uuid references auth.users(id)
+);
+
+-- Garantir que a coluna receipt_url exista caso a tabela já existisse
+do $$ 
+begin
+  if not exists (select 1 from information_schema.columns where table_name='expenses' and column_name='receipt_url') then
+    alter table expenses add column receipt_url text;
+  end if;
+end $$;
+
+alter table expenses enable row level security;
+
+drop policy if exists "Acesso individual - Gastos" on expenses;
+create policy "Acesso individual - Gastos" on expenses for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 10. Ativar Sincronização em Tempo Real (Realtime) para todas as tabelas
+do $$ 
+begin
+  begin
+    alter publication supabase_realtime add table projects, tasks, notes, espanha_scenarios, expenses;
+  exception when others then
+  end;
+end $$;

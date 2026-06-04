@@ -5,47 +5,42 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 
-/**
- * Página de callback do OAuth (fluxo implicit).
- * O Supabase redireciona para cá com #access_token=... no hash.
- * O SDK detecta automaticamente via detectSessionInUrl: true.
- */
 export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // O SDK processa o hash automaticamente ao inicializar.
-    // Só precisamos aguardar a sessão ser estabelecida.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function handleCallback() {
+      // Extrai tokens do hash manualmente (implicit flow)
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+
+      const access_token    = params.get("access_token");
+      const refresh_token   = params.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        // Usa setSession para registrar a sessão sem chamar /auth/v1/user
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) {
+          console.error("[callback] setSession error:", error.message);
+          router.replace("/login?error=auth&reason=session");
+          return;
+        }
+        // Limpa o hash da URL
+        window.history.replaceState(null, "", window.location.pathname);
+        router.replace("/");
+        return;
+      }
+
+      // Sem tokens no hash — verifica se já há sessão persistida
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log("[auth/callback] sessão detectada:", session.user.email);
         router.replace("/");
       } else {
-        // Aguarda o onAuthStateChange processar o hash
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          console.log("[auth/callback] auth event:", event, "| user:", session?.user?.email);
-          if (event === "SIGNED_IN" && session) {
-            subscription.unsubscribe();
-            router.replace("/");
-          } else if (event === "SIGNED_OUT" || (!session && event !== "INITIAL_SESSION")) {
-            subscription.unsubscribe();
-            router.replace("/login?error=auth");
-          }
-        });
-
-        // Timeout de segurança: se em 5s não autenticou, volta pro login
-        const timeout = setTimeout(() => {
-          subscription.unsubscribe();
-          console.error("[auth/callback] timeout — sem sessão após 5s");
-          router.replace("/login?error=auth&reason=timeout");
-        }, 5000);
-
-        return () => {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-        };
+        router.replace("/login?error=auth&reason=no-token");
       }
-    });
+    }
+
+    handleCallback();
   }, [router]);
 
   return (
