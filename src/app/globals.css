@@ -1,45 +1,189 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", "SF Pro Display", "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ─── Design Tokens ─────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM UNIFICADO — Apple Premium Style
+   Acento único: #0A84FF (azul elétrico)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Light Theme ────────────────────────────────────────────────────── */
 :root {
-  --bg:            #f1f5f9;
-  --surface:       #ffffff;
-  --surface-2:     #f8fafc;
-  --surface-3:     #f1f5f9;
-  --border:        #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --text:          #0f172a;
-  --text-muted:    #64748b;
-  --text-faint:    #94a3b8;
-  --accent:        #2563eb;
-  --header-bg:     rgba(255,255,255,0.9);
-  --sidebar-bg:    #ffffff;
-  --card-shadow:   0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  /* Superfícies */
+  --bg:               #F5F5F7;
+  --surface:          #FFFFFF;
+  --surface-2:        #F0F0F2;
+  --surface-3:        #E8E8ED;
+  --surface-overlay:  rgba(255,255,255,0.92);
+
+  /* Sidebar */
+  --sidebar-bg:       rgba(255,255,255,0.97);
+  --sidebar-text:     rgba(0,0,0,0.55);
+  --sidebar-text-active: #1D1D1F;
+
+  /* Header */
+  --header-bg:        rgba(245,245,247,0.88);
+
+  /* Bordas */
+  --border:           #D2D2D7;
+  --border-subtle:    #E8E8ED;
+  --border-strong:    #C7C7CC;
+
+  /* Tipografia */
+  --text:             #1D1D1F;
+  --text-secondary:   #424245;
+  --text-muted:       #86868B;
+  --text-faint:       #AEAEB2;
+
+  /* Acento ÚNICO — azul elétrico */
+  --accent:           #0A84FF;
+  --accent-hover:     #0071E3;
+  --accent-muted:     rgba(10,132,255,0.10);
+  --accent-subtle:    rgba(10,132,255,0.06);
+  --accent-border:    rgba(10,132,255,0.20);
+  --accent-shadow:    rgba(10,132,255,0.24);
+
+  /* Status semântico */
+  --color-done:       #34C759;
+  --color-doing:      #0A84FF;
+  --color-pending:    #AEAEB2;
+  --color-warning:    #FF9500;
+  --color-danger:     #FF3B30;
+  --color-purple:     #AF52DE;
+  --color-teal:       #32ADE6;
+  --color-indigo:     #5856D6;
+  --color-pink:       #FF2D55;
+
+  /* Backgrounds semânticos */
+  --bg-done:          rgba(52,199,89,0.10);
+  --bg-doing:         rgba(10,132,255,0.10);
+  --bg-warning:       rgba(255,149,0,0.10);
+  --bg-danger:        rgba(255,59,48,0.08);
+  --bg-purple:        rgba(175,82,222,0.10);
+  --bg-teal:          rgba(50,173,230,0.10);
+  --bg-indigo:        rgba(88,86,214,0.10);
+  --bg-pink:          rgba(255,45,85,0.08);
+
+  /* Sombras */
+  --card-shadow:      0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  --card-shadow-lg:   0 4px 14px rgba(0,0,0,0.08), 0 10px 32px rgba(0,0,0,0.06);
+  --shadow-accent:    0 2px 10px var(--accent-shadow);
+
+  /* Gradientes */
+  --gradient-primary:   linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%);
+  --gradient-premium:   linear-gradient(135deg, rgba(10,132,255,0.15) 0%, rgba(94,92,230,0.08) 100%);
+  --gradient-warm:      linear-gradient(135deg, #FF9500 0%, #FF6B00 100%);
+  --gradient-success:   linear-gradient(135deg, #34C759 0%, #30D158 100%);
+  --gradient-hero:      linear-gradient(160deg, #F5F5F7 0%, #E8E8ED 100%);
+  --gradient-surface:   linear-gradient(180deg, #FFFFFF 0%, #F5F5F7 100%);
+  --gradient-glass:     linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%);
+
+  /* Roles */
+  --role-viewer:      #86868B;
+  --role-editor:      #0A84FF;
+  --role-admin:       #FF9500;
+
+  /* Moedas */
+  --currency-brl:     #34C759;
+  --currency-eur:     #0A84FF;
+  --currency-usd:     #FF9500;
+
+  /* Overlay */
+  --overlay:          rgba(0,0,0,0.32);
 }
 
+/* ─── Dark Theme ─────────────────────────────────────────────────────── */
 html.dark {
-  --bg:            #09090b;
-  --surface:       #18181b;
-  --surface-2:     #27272a;
-  --surface-3:     #18181b;
-  --border:        #3f3f46;
-  --border-subtle: #27272a;
-  --text:          #fafafa;
-  --text-muted:    #a1a1aa;
-  --text-faint:    #71717a;
-  --accent:        #3b82f6;
-  --header-bg:     rgba(9,9,11,0.9);
-  --sidebar-bg:    #09090b;
-  --card-shadow:   0 1px 3px rgba(0,0,0,0.4);
+  /* Superfícies — profundidade por camadas */
+  --bg:               #000000;
+  --surface:          #1C1C1E;
+  --surface-2:        #2C2C2E;
+  --surface-3:        #3A3A3C;
+  --surface-overlay:  rgba(28,28,30,0.94);
+
+  /* Sidebar — preto profundo premium */
+  --sidebar-bg:       #0A0A0A;
+  --sidebar-text:     rgba(255,255,255,0.55);
+  --sidebar-text-active: #FFFFFF;
+
+  /* Header */
+  --header-bg:        rgba(17,17,17,0.90);
+
+  /* Bordas */
+  --border:           #38383A;
+  --border-subtle:    #2C2C2E;
+  --border-strong:    #48484A;
+
+  /* Tipografia */
+  --text:             #F5F5F7;
+  --text-secondary:   #D1D1D6;
+  --text-muted:       #8E8E93;
+  --text-faint:       #636366;
+
+  /* Acento — azul elétrico brilhante */
+  --accent:           #0A84FF;
+  --accent-hover:     #409CFF;
+  --accent-muted:     rgba(10,132,255,0.16);
+  --accent-subtle:    rgba(10,132,255,0.08);
+  --accent-border:    rgba(10,132,255,0.24);
+  --accent-shadow:    rgba(10,132,255,0.30);
+
+  /* Status — mais vibrantes para dark */
+  --color-done:       #30D158;
+  --color-doing:      #0A84FF;
+  --color-pending:    #636366;
+  --color-warning:    #FF9F0A;
+  --color-danger:     #FF453A;
+  --color-purple:     #BF5AF2;
+  --color-teal:       #5AC8FA;
+  --color-indigo:     #5E5CE6;
+  --color-pink:       #FF375F;
+
+  /* Backgrounds semânticos — dark */
+  --bg-done:          rgba(48,209,88,0.14);
+  --bg-doing:         rgba(10,132,255,0.16);
+  --bg-warning:       rgba(255,159,10,0.14);
+  --bg-danger:        rgba(255,69,58,0.12);
+  --bg-purple:        rgba(191,90,242,0.14);
+  --bg-teal:          rgba(90,200,250,0.12);
+  --bg-indigo:        rgba(94,92,230,0.14);
+  --bg-pink:          rgba(255,55,95,0.12);
+
+  /* Sombras — intensas em dark */
+  --card-shadow:      0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+  --card-shadow-lg:   0 4px 20px rgba(0,0,0,0.45), 0 14px 44px rgba(0,0,0,0.3);
+  --shadow-accent:    0 2px 14px var(--accent-shadow);
+
+  /* Gradientes dark */
+  --gradient-primary:   linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%);
+  --gradient-premium:   linear-gradient(135deg, rgba(10,132,255,0.18) 0%, rgba(94,92,230,0.10) 100%);
+  --gradient-warm:      linear-gradient(135deg, #FF9F0A 0%, #FF6B00 100%);
+  --gradient-success:   linear-gradient(135deg, #30D158 0%, #34C759 100%);
+  --gradient-hero:      linear-gradient(160deg, #111111 0%, #1C1C1E 100%);
+  --gradient-surface:   linear-gradient(180deg, #1C1C1E 0%, #111111 100%);
+  --gradient-glass:     linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+
+  /* Roles dark */
+  --role-viewer:      #636366;
+  --role-editor:      #0A84FF;
+  --role-admin:       #FF9F0A;
+
+  /* Moedas dark */
+  --currency-brl:     #30D158;
+  --currency-eur:     #0A84FF;
+  --currency-usd:     #FF9F0A;
+
+  /* Overlay */
+  --overlay:          rgba(0,0,0,0.60);
 }
 
-/* ─── Base ──────────────────────────────────────────────── */
-html             { color-scheme: light; }
-html.dark        { color-scheme: dark; }
+/* ═══════════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════════ */
+html        { color-scheme: light; }
+html.dark   { color-scheme: dark; }
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -48,39 +192,60 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.2s, color 0.2s;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Glass ─────────────────────────────────────────────── */
+/* ─── Transição suave light/dark (300ms) ─────────────────────────────── */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+html * {
+  transition-property: background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 0.2s;
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Animações não devem herdar timing de transição de tema */
+[class*="animate-"] { transition: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GLASS
+   ═══════════════════════════════════════════════════════════════════════ */
 .glass {
   background: var(--header-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
-/* ─── Remove number input spin buttons ─────────────────── */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-/* ─── Scrollbar ─────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-/* ─── Reutilizáveis ─────────────────────────────────────── */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMPONENTES BASE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Card ──────────────────────────────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
   box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.card:hover {
+  box-shadow: var(--card-shadow-lg);
 }
 
+/* ─── Input ─────────────────────────────────────────────────────────── */
 .input {
   width: 100%;
   padding: 0.625rem 1rem;
@@ -89,22 +254,129 @@ input[type="number"] {
   border-radius: 0.75rem;
   font-size: 0.875rem;
   color: var(--text);
-  transition: border-color 0.15s, box-shadow 0.15s;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .input::placeholder { color: var(--text-faint); }
 .input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+  background: var(--surface);
 }
 
-/* ─── Animações ─────────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity:0; transform:translateY(6px); }
-  to   { opacity:1; transform:translateY(0);   }
+/* ─── Botão primário ─────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-accent);
+  transition: background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1),
+              box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
-.fade-up { animation: fadeUp 0.2s ease both; }
+.btn-primary:hover  { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-shadow); }
+.btn-primary:active { transform: translateY(0) scale(0.97); }
+
+/* ─── Botão secundário ──────────────────────────────────────────────── */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+              border-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.btn-secondary:hover  { background: var(--surface-3); border-color: var(--border-strong); }
+.btn-secondary:active { transform: scale(0.97); }
+
+/* ─── Badges ────────────────────────────────────────────────────────── */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.role-badge.viewer { background: rgba(142,142,147,0.10); color: var(--role-viewer); }
+.role-badge.editor { background: var(--bg-doing);         color: var(--role-editor); }
+.role-badge.admin  { background: var(--bg-warning);       color: var(--role-admin);  }
+
+/* ─── Gradiente hero ─────────────────────────────────────────────────── */
+.gradient-hero { background: var(--gradient-hero); }
+
+/* ─── Remove number input spin buttons ──────────────────────────────── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MICRO-ANIMAÇÕES
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.fade-up { animation: fadeUp 0.22s cubic-bezier(0.16,1,0.3,1) both; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in    { animation: fadeIn 0.2s ease both; }
+.animate-fadeIn { animation: fadeIn 0.3s ease both; }
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+.scale-in      { animation: scaleIn 0.2s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-scaleUp { animation: scaleIn 0.2s cubic-bezier(0.16,1,0.3,1) both; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+/* ─── Micro-interações ─────────────────────────────────────────────── */
+a, button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Modal overlay ────────────────────────────────────────────────── */
+.modal-overlay {
+  background: var(--overlay);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ─── Seleção de texto ─────────────────────────────────────────────── */
+::selection {
+  background: var(--accent-muted);
+  color: var(--text);
 }

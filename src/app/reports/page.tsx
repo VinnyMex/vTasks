@@ -24,8 +24,8 @@ function Bar({ pct, color, label, value }: { pct: number; color: string; label: 
       </span>
       <div className="flex-1 bg-[var(--surface-2)] rounded-full h-5 overflow-hidden border border-[var(--border-subtle)]">
         <div
-          className={`h-full rounded-full ${color} transition-all duration-700`}
-          style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`, background: color }}
         />
       </div>
       <span className="w-28 text-xs font-bold text-[var(--text-muted)] text-right flex-shrink-0 tabular-nums">
@@ -70,7 +70,7 @@ function DonutChart({ slices }: { slices: { label: string; value: number; color:
             <path
               key={i}
               d={`M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y} Z`}
-              className={arc.color}
+              fill={arc.color}
             />
           );
         })}
@@ -85,7 +85,7 @@ function DonutChart({ slices }: { slices: { label: string; value: number; color:
       <div className="space-y-1.5 flex-1 min-w-0">
         {arcs.filter(a => a.value > 0).map((arc, i) => (
           <div key={i} className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${arc.color}`} />
+            <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: arc.color }} />
             <span className="text-xs text-[var(--text-muted)] truncate flex-1">{arc.label}</span>
             <span className="text-xs font-bold text-[var(--text)] tabular-nums">
               {(arc.pct * 100).toFixed(0)}%
@@ -98,9 +98,9 @@ function DonutChart({ slices }: { slices: { label: string; value: number; color:
 }
 
 const CAT_COLORS = [
-  "fill-blue-500","fill-emerald-500","fill-amber-500","fill-rose-500",
-  "fill-purple-500","fill-cyan-500","fill-orange-500","fill-teal-500",
-  "fill-pink-500","fill-indigo-500",
+  "#3b82f6","#10b981","#f59e0b","#f43f5e",
+  "#a855f7","#06b6d4","#f97316","#14b8a6",
+  "#ec4899","#6366f1",
 ];
 
 export default function ReportsPage() {
@@ -211,9 +211,9 @@ export default function ReportsPage() {
 
   // ── Comparativo tarefas por status ────────────────────────────────────────
   const taskSlices = useMemo(() => [
-    { label: "A Fazer",      value: filteredTasks.filter(t => t.status === "todo").length,  color: "fill-zinc-400" },
-    { label: "Em Andamento", value: filteredTasks.filter(t => t.status === "doing").length, color: "fill-blue-500" },
-    { label: "Concluídas",   value: taskDone,  color: "fill-emerald-500" },
+    { label: "A Fazer",      value: filteredTasks.filter(t => t.status === "todo").length,  color: "#a1a1aa" },
+    { label: "Em Andamento", value: filteredTasks.filter(t => t.status === "doing").length, color: "#3b82f6" },
+    { label: "Concluídas",   value: taskDone,  color: "#10b981" },
   ], [filteredTasks, taskDone]);
 
   const getCurrencySymbol = (currency: string) => {
@@ -226,7 +226,7 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black text-[var(--text)] tracking-tight flex items-center gap-2">
-            <BarChart2 className="text-rose-500 w-7 h-7" />
+            <BarChart2 className="w-7 h-7" style={{ color: "var(--color-danger)" }} />
             Relatórios & Gráficos
           </h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Visão analítica de gastos e produtividade.</p>
@@ -346,7 +346,7 @@ export default function ReportsPage() {
                         key={cat}
                         label={cat.slice(0, 4)}
                         pct={(valPrimary / maxCatPrimary) * 100}
-                        color={`bg-${["blue","emerald","amber","rose","purple","cyan","orange","teal"][i % 8]}-500`}
+                        color={CAT_COLORS[i % CAT_COLORS.length]}
                         value={formatActive(valPrimary)}
                       />
                     ))}
@@ -367,14 +367,14 @@ export default function ReportsPage() {
 
               <div className="space-y-3 mt-4">
                 {[
-                  { label: "Concluídas", value: taskDone,  color: "bg-emerald-500", pct: taskTotal ? (taskDone/taskTotal)*100 : 0 },
-                  { label: "Andamento",  value: filteredTasks.filter(t => t.status === "doing").length, color: "bg-blue-500", pct: taskTotal ? (filteredTasks.filter(t => t.status === "doing").length/taskTotal)*100 : 0 },
-                  { label: "A Fazer",    value: filteredTasks.filter(t => t.status === "todo").length,  color: "bg-zinc-400", pct: taskTotal ? (filteredTasks.filter(t => t.status === "todo").length/taskTotal)*100 : 0 },
+                  { label: "Concluídas", value: taskDone,  color: "#10b981", pct: taskTotal ? (taskDone/taskTotal)*100 : 0 },
+                  { label: "Andamento",  value: filteredTasks.filter(t => t.status === "doing").length, color: "#3b82f6", pct: taskTotal ? (filteredTasks.filter(t => t.status === "doing").length/taskTotal)*100 : 0 },
+                  { label: "A Fazer",    value: filteredTasks.filter(t => t.status === "todo").length,  color: "#a1a1aa", pct: taskTotal ? (filteredTasks.filter(t => t.status === "todo").length/taskTotal)*100 : 0 },
                 ].map(({ label, value, color, pct }) => (
                   <div key={label} className="flex items-center gap-3">
                     <span className="w-20 text-xs font-bold text-[var(--text-muted)]">{label}</span>
                     <div className="flex-1 bg-[var(--surface-2)] rounded-full h-4 border border-[var(--border-subtle)] overflow-hidden">
-                      <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: `${Math.max(pct, pct > 0 ? 4 : 0)}%` }} />
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(pct, pct > 0 ? 4 : 0)}%`, background: color }} />
                     </div>
                     <span className="w-8 text-right text-xs font-black text-[var(--text)] tabular-nums">{value}</span>
                   </div>
@@ -385,21 +385,21 @@ export default function ReportsPage() {
                 <div className="mt-5 p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-[var(--text-faint)] uppercase tracking-widest">Produtividade</span>
-                    <span className={`text-lg font-black ${
-                      taskDone/taskTotal >= 0.7 ? "text-emerald-600 dark:text-emerald-400" :
-                      taskDone/taskTotal >= 0.4 ? "text-amber-600 dark:text-amber-400" :
-                      "text-rose-600 dark:text-rose-400"
-                    }`}>
+                    <span className="text-lg font-black" style={{
+                      color: taskDone/taskTotal >= 0.7 ? "var(--color-done)" :
+                             taskDone/taskTotal >= 0.4 ? "var(--color-warning)" : "var(--color-danger)"
+                    }}>
                       {Math.round((taskDone / taskTotal) * 100)}%
                     </span>
                   </div>
                   <div className="w-full bg-[var(--border)] rounded-full h-1.5 mt-2">
                     <div
-                      className={`h-1.5 rounded-full transition-all duration-700 ${
-                        taskDone/taskTotal >= 0.7 ? "bg-emerald-500" :
-                        taskDone/taskTotal >= 0.4 ? "bg-amber-500" : "bg-rose-500"
-                      }`}
-                      style={{ width: `${(taskDone / taskTotal) * 100}%` }}
+                      className="h-1.5 rounded-full transition-all duration-700"
+                      style={{
+                        width: `${(taskDone / taskTotal) * 100}%`,
+                        background: taskDone/taskTotal >= 0.7 ? "var(--color-done)" :
+                                    taskDone/taskTotal >= 0.4 ? "var(--color-warning)" : "var(--color-danger)"
+                      }}
                     />
                   </div>
                 </div>

@@ -268,7 +268,7 @@ export default function ExpensesPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
-            <DollarSign className="w-6 h-6" style={{ color: "#10b981" }} />
+            <DollarSign className="w-6 h-6" style={{ color: "var(--color-teal)" }} />
             Controle de Gastos
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>{primaryCurrency} · {secondaryCurrency} — conversão automática.</p>
@@ -276,7 +276,7 @@ export default function ExpensesPage() {
         <button
           onClick={() => { resetForm(); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
-          style={{ background: "#10b981", boxShadow: "0 2px 8px rgba(16,185,129,0.3)" }}
+          style={{ background: "var(--color-teal)", boxShadow: "0 2px 8px var(--bg-teal)" }}
         >
           <Plus className="w-4 h-4" /> Novo Gasto
         </button>
@@ -362,7 +362,7 @@ export default function ExpensesPage() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all"
-                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: form.receipt_url ? "#10b981" : "var(--text-muted)" }}
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: form.receipt_url ? "var(--color-teal)" : "var(--text-muted)" }}
                 >
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : (form.receipt_url ? <Check className="w-4 h-4" /> : <Camera className="w-4 h-4" />)}
                   {form.receipt_url ? "Comprovante Anexado" : "Anexar Foto/Arquivo"}
@@ -371,7 +371,10 @@ export default function ExpensesPage() {
                   <button
                     type="button"
                     onClick={() => setForm(p => ({ ...p, receipt_url: null }))}
-                    className="px-3 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                    className="px-3 rounded-xl transition-colors"
+                    style={{ border: "1px solid var(--border)", color: "var(--color-danger)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-danger)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -390,7 +393,7 @@ export default function ExpensesPage() {
               onClick={save}
               disabled={saving || uploading || !form.title.trim() || !form.amount}
               className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
-              style={{ background: "#10b981" }}
+              style={{ background: "var(--color-teal)" }}
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {editId ? "Salvar Alterações" : "Adicionar Gasto"}
@@ -404,9 +407,9 @@ export default function ExpensesPage() {
 
       {/* ── Totais ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="card p-5 flex flex-col justify-center" style={{ background: "rgba(37,99,235,0.05)" }}>
+        <div className="card p-5 flex flex-col justify-center" style={{ background: "var(--accent-muted)" }}>
           <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "var(--text-faint)" }}>Total Acumulado ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})</p>
-          <p className="text-3xl font-black tabular-nums" style={{ color: "#2563eb" }}>{formatActive(totalPrimary)}</p>
+          <p className="text-3xl font-black tabular-nums" style={{ color: "var(--accent)" }}>{formatActive(totalPrimary)}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-4 flex flex-col justify-center" style={{ background: "var(--surface)" }}>
@@ -441,7 +444,7 @@ export default function ExpensesPage() {
             onClick={() => setShowFilter(v => !v)}
             className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all flex-shrink-0"
             style={{
-              background: showFilter || hasActiveFilter ? "#2563eb" : "var(--surface)",
+              background: showFilter || hasActiveFilter ? "var(--accent)" : "var(--surface)",
               color: showFilter || hasActiveFilter ? "#fff" : "var(--text-muted)",
               border: "1px solid var(--border)",
             }}
@@ -495,7 +498,7 @@ export default function ExpensesPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-14"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>
+          <div className="flex justify-center py-14"><Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--accent)" }} /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-14 text-xs font-black uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>Nenhum gasto encontrado</div>
         ) : (
@@ -511,16 +514,16 @@ export default function ExpensesPage() {
                       <p className="font-bold text-sm truncate" style={{ color: "var(--text)" }}>{e.title}</p>
                       <p className="text-[10px] uppercase font-black" style={{ color: "var(--text-faint)" }}>{new Date(e.date + "T12:00:00").toLocaleDateString("pt-BR")} · {e.category}</p>
                     </div>
-                    <span className="font-black text-sm text-emerald-500">{formatActive(valInPrimary)}</span>
+                    <span className="font-black text-sm text-[var(--color-done)]">{formatActive(valInPrimary)}</span>
                   </div>
                   <div className="flex gap-2">
                     {e.receipt_url && (
-                      <a href={e.receipt_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "rgba(16,185,129,0.1)", color: "#10b981" }}>
+                      <a href={e.receipt_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "var(--bg-teal)", color: "var(--color-teal)" }}>
                         <Eye className="w-3 h-3" /> Ver Comprovante
                       </a>
                     )}
                     <button onClick={() => startEdit(e)} className="p-1.5 rounded-lg border border-[var(--border)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => del(e.id)} className="p-1.5 rounded-lg border border-red-100 text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => del(e.id)} className="p-1.5 rounded-lg" style={{ border: "1px solid var(--border)", color: "var(--color-danger)" }}><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
 
@@ -532,13 +535,19 @@ export default function ExpensesPage() {
                   <span className="text-xs font-bold uppercase" style={{ color: "var(--text-faint)" }}>{e.category}</span>
                   <span className="text-xs font-bold text-right text-[var(--text-muted)]">{e.quantity}</span>
                   <span className="text-xs font-black" style={{ color: "var(--text-faint)" }}>{e.currency}</span>
-                  <span className="text-sm font-black text-right text-emerald-500">{formatActive(valInPrimary)}</span>
+                  <span className="text-sm font-black text-right text-[var(--color-done)]">{formatActive(valInPrimary)}</span>
                   <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {e.receipt_url && (
-                      <a href={e.receipt_url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50" title="Ver Comprovante"><Eye className="w-4 h-4" /></a>
+                      <a href={e.receipt_url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg" style={{ color: "var(--color-done)" }} title="Ver Comprovante"
+                        onMouseEnter={ev => (ev.currentTarget.style.background = "var(--bg-done)")}
+                        onMouseLeave={ev => (ev.currentTarget.style.background = "")}><Eye className="w-4 h-4" /></a>
                     )}
-                    <button onClick={() => startEdit(e)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => del(e.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => startEdit(e)} className="p-1.5 rounded-lg" style={{ color: "var(--accent)" }}
+                      onMouseEnter={ev => (ev.currentTarget.style.background = "var(--accent-muted)")}
+                      onMouseLeave={ev => (ev.currentTarget.style.background = "")}><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => del(e.id)} className="p-1.5 rounded-lg" style={{ color: "var(--color-danger)" }}
+                      onMouseEnter={ev => (ev.currentTarget.style.background = "var(--bg-danger)")}
+                      onMouseLeave={ev => (ev.currentTarget.style.background = "")}><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               </div>

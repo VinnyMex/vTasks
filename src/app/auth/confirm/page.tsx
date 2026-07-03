@@ -50,7 +50,7 @@ export default function AuthConfirmPage() {
         className="min-h-screen flex flex-col items-center justify-center gap-4 p-8"
         style={{ background: "var(--bg)" }}
       >
-        <p className="text-sm font-bold text-red-500">Erro de autenticação</p>
+        <p className="text-sm font-bold" style={{ color: "var(--color-danger)" }}>Erro de autenticação</p>
         <p className="text-xs text-center max-w-sm" style={{ color: "var(--text-faint)" }}>
           {errorMsg}
         </p>

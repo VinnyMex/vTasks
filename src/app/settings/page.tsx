@@ -16,7 +16,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       onClick={e => { e.stopPropagation(); onChange(!value); }}
       onKeyDown={e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onChange(!value); } }}
       className="relative w-11 h-6 rounded-full transition-all flex-shrink-0 cursor-pointer select-none"
-      style={{ background: value ? "#2563eb" : "var(--border)" }}
+      style={{ background: value ? "var(--accent)" : "var(--border)" }}
     >
       <span
         className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
@@ -81,8 +81,8 @@ function ThemeRow({ theme, onToggle }: { theme: string; onToggle: () => void }) 
         style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}
       >
         {theme === "dark"
-          ? <Moon className="w-4 h-4" style={{ color: "#f59e0b" }} />
-          : <Sun  className="w-4 h-4" style={{ color: "#f59e0b" }} />
+          ? <Moon className="w-4 h-4" style={{ color: "var(--color-warning)" }} />
+          : <Sun  className="w-4 h-4" style={{ color: "var(--color-warning)" }} />
         }
       </div>
       <div className="flex-1 min-w-0">
@@ -134,7 +134,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
-          <Settings className="w-6 h-6" style={{ color: "#64748b" }} />
+          <Settings className="w-6 h-6" style={{ color: "var(--text-muted)" }} />
           Configurações
         </h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>Preferências do sistema vTasks Pro.</p>
@@ -145,7 +145,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-4 px-5 py-4">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white text-xl flex-shrink-0"
-            style={{ background: "#2563eb" }}
+            style={{ background: "var(--accent)" }}
           >
             VM
           </div>
@@ -298,8 +298,8 @@ export default function SettingsPage() {
         onClick={save}
         className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         style={{
-          background: saved ? "#10b981" : "#2563eb",
-          boxShadow: saved ? "0 2px 8px rgba(16,185,129,0.3)" : "0 2px 8px rgba(37,99,235,0.3)",
+          background: saved ? "var(--color-done)" : "var(--accent)",
+          boxShadow: saved ? "0 2px 8px var(--bg-done)" : "var(--shadow-accent)",
         }}
       >
         {saved ? <><Check className="w-4 h-4" /> Preferências salvas!</> : "Salvar Preferências"}

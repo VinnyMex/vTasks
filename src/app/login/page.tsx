@@ -6,10 +6,12 @@ import Image from "next/image";
 import { signInWithGoogle } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function LoginPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { theme }    = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
@@ -51,17 +53,17 @@ export default function LoginPage() {
       >
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 relative mb-4">
-            <Image src="/vtasks-light.png" alt="vTasks" fill sizes="64px" className="object-contain" loading="eager" />
+            <Image src={theme === "dark" ? "/vtasks-dark.png" : "/vtasks-light.png"} alt="vTasks" fill sizes="64px" className="object-contain" loading="eager" />
           </div>
           <h1 className="text-2xl font-black tracking-tight" style={{ color: "var(--text)" }}>
-            vTasks<span style={{ color: "#2563eb" }}>Pro</span>
+            vTasks<span style={{ color: "var(--accent)" }}>Pro</span>
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-faint)" }}>vWeb Marketing · Sistema de Produtividade</p>
         </div>
         <div className="h-px mb-8" style={{ background: "var(--border)" }} />
         <p className="text-xs font-black uppercase tracking-widest text-center mb-5" style={{ color: "var(--text-faint)" }}>Entrar na sua conta</p>
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl text-sm font-semibold text-center" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <div className="mb-4 px-4 py-3 rounded-xl text-sm font-semibold text-center" style={{ background: "var(--bg-danger)", color: "var(--color-danger)", border: "1px solid var(--color-danger)" }}>
             {error}
           </div>
         )}
@@ -71,7 +73,7 @@ export default function LoginPage() {
           className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60"
           style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", boxShadow: "var(--card-shadow)" }}
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#4285f4" }} /> : (
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--accent)" }} /> : (
             <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
               <path d="M47.532 24.552c0-1.636-.132-3.196-.378-4.692H24.48v9.168h12.988c-.576 2.988-2.268 5.52-4.8 7.212v5.988h7.764c4.548-4.188 7.1-10.356 7.1-17.676z" fill="#4285F4"/>
               <path d="M24.48 48c6.468 0 11.892-2.148 15.852-5.772l-7.764-5.988c-2.148 1.44-4.896 2.292-8.088 2.292-6.228 0-11.496-4.212-13.38-9.876H3.096v6.18C7.044 42.876 15.204 48 24.48 48z" fill="#34A853"/>

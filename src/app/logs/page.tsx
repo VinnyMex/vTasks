@@ -22,10 +22,10 @@ const ACTION_ICON: Record<string, React.ElementType> = {
   update: PenLine,
   delete: Trash2,
 };
-const ACTION_COLOR: Record<string, string> = {
-  create: "#10b981",
-  update: "#3b82f6",
-  delete: "#ef4444",
+const ACTION_COLOR: Record<string, { color: string; bg: string }> = {
+  create: { color: "var(--color-done)",   bg: "var(--bg-done)"   },
+  update: { color: "var(--color-doing)",  bg: "var(--bg-doing)"  },
+  delete: { color: "var(--color-danger)", bg: "var(--bg-danger)" },
 };
 const ACTION_LABEL: Record<string, string> = {
   create: "Criou",
@@ -91,8 +91,8 @@ export default function LogsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.10)" }}>
-            <Activity className="w-5 h-5" style={{ color: "#ef4444" }} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-danger)" }}>
+            <Activity className="w-5 h-5" style={{ color: "var(--color-danger)" }} />
           </div>
           <div>
             <h1 className="text-lg font-black" style={{ color: "var(--text)" }}>Log de Atividades</h1>
@@ -117,9 +117,9 @@ export default function LogsPage() {
             onClick={() => setFilter(f)}
             className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
             style={{
-              background: filter === f ? "#2563eb" : "var(--surface-2)",
+              background: filter === f ? "var(--accent)" : "var(--surface-2)",
               color: filter === f ? "#fff" : "var(--text-muted)",
-              border: `1px solid ${filter === f ? "#2563eb" : "var(--border)"}`,
+              border: `1px solid ${filter === f ? "var(--accent)" : "var(--border)"}`,
             }}
           >
             {{ all: "Todos", task: "Tarefas", note: "Notas", expense: "Gastos" }[f]}
@@ -132,7 +132,7 @@ export default function LogsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#2563eb" }} />
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--accent)" }} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -143,7 +143,7 @@ export default function LogsPage() {
         <div className="space-y-2">
           {filtered.map(log => {
             const Icon = ACTION_ICON[log.action] ?? Activity;
-            const color = ACTION_COLOR[log.action] ?? "#6b7280";
+            const tokens = ACTION_COLOR[log.action] ?? { color: "var(--text-muted)", bg: "var(--surface-2)" };
             const isSelf = log.user_id === user?.id;
             return (
               <div
@@ -152,15 +152,15 @@ export default function LogsPage() {
                 style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
               >
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: `${color}14` }}>
-                  <Icon className="w-3.5 h-3.5" style={{ color }} />
+                  style={{ background: tokens.bg }}>
+                  <Icon className="w-3.5 h-3.5" style={{ color: tokens.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-bold" style={{ color: "var(--text)" }}>
                       {isSelf ? "Você" : (log.user_email ?? "Membro")}
                     </span>
-                    <span className="text-xs font-semibold" style={{ color }}>
+                    <span className="text-xs font-semibold" style={{ color: tokens.color }}>
                       {ACTION_LABEL[log.action]}
                     </span>
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>

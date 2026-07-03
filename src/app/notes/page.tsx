@@ -33,9 +33,9 @@ function ToolButton({
       onMouseDown={e => { e.preventDefault(); onClick(); }}
       className="w-7 h-7 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
       style={{
-        background: active ? "rgba(37,99,235,0.15)" : "transparent",
-        color: active ? "#2563eb" : "var(--text-muted)",
-        border: active ? "1px solid rgba(37,99,235,0.3)" : "1px solid transparent",
+        background: active ? "var(--accent-muted)" : "transparent",
+        color: active ? "var(--accent)" : "var(--text-muted)",
+        border: active ? "1px solid var(--accent)" : "1px solid transparent",
       }}
       onMouseEnter={ev => { if (!active) ev.currentTarget.style.background = "var(--surface-2)"; }}
       onMouseLeave={ev => { if (!active) ev.currentTarget.style.background = "transparent"; }}
@@ -138,7 +138,7 @@ function RichEditor({
     }
     editorRef.current?.focus();
     const text = savedRange.current.toString() || linkUrl;
-    exec("insertHTML", `<a href="${linkUrl}" target="_blank" rel="noreferrer" style="color:#3b82f6;text-decoration:underline">${text}</a>`);
+    exec("insertHTML", `<a href="${linkUrl}" target="_blank" rel="noreferrer" style="color:var(--accent);text-decoration:underline">${text}</a>`);
     setLinkModal(false);
   }
 
@@ -258,8 +258,7 @@ function RichEditor({
       {/* Modal de link */}
       {linkModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: "rgba(0,0,0,0.4)" }}
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-overlay"
           onClick={() => setLinkModal(false)}
         >
           <div
@@ -281,7 +280,7 @@ function RichEditor({
               <button
                 onClick={insertLink}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{ background: "#2563eb" }}
+                style={{ background: "var(--accent)" }}
               >
                 Inserir
               </button>
@@ -357,7 +356,7 @@ function NoteItem({ note, selected, onSelect, onDelete, onShare, role, emailById
               className="p-1 rounded-lg transition-all flex-shrink-0"
               style={{ color: "var(--text-faint)" }}
               title="Compartilhar"
-              onMouseEnter={ev => (ev.currentTarget.style.color = "#2563eb")}
+              onMouseEnter={ev => (ev.currentTarget.style.color = "var(--accent)")}
               onMouseLeave={ev => (ev.currentTarget.style.color = "var(--text-faint)")}
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -369,7 +368,7 @@ function NoteItem({ note, selected, onSelect, onDelete, onShare, role, emailById
               onClick={ev => { ev.stopPropagation(); onDelete(note.id); }}
               className="p-1 rounded-lg transition-all flex-shrink-0"
               style={{ color: "var(--text-faint)" }}
-              onMouseEnter={ev => (ev.currentTarget.style.color = "#ef4444")}
+              onMouseEnter={ev => (ev.currentTarget.style.color = "var(--color-danger)")}
               onMouseLeave={ev => (ev.currentTarget.style.color = "var(--text-faint)")}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -378,7 +377,7 @@ function NoteItem({ note, selected, onSelect, onDelete, onShare, role, emailById
         </div>
       </div>
       <p className="text-xs line-clamp-1 mt-0.5" style={{ color: "var(--text-faint)" }}>
-        {note.content?.replace(/<[^>]+>/g, " ").trim() || "Vazia..."}
+        {note.content?.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "Vazia..."}
       </p>
       <div className="flex items-center justify-between mt-1.5">
         <span className="text-[10px] font-bold uppercase tracking-tighter" style={{ color: "var(--text-faint)" }}>
@@ -386,7 +385,7 @@ function NoteItem({ note, selected, onSelect, onDelete, onShare, role, emailById
         </span>
         <div className="flex items-center gap-2">
           {isViewer && (
-            <span className="flex items-center gap-0.5 text-[9px] font-bold" style={{ color: "#6b7280" }}>
+            <span className="flex items-center gap-0.5 text-[9px] font-bold" style={{ color: "var(--text-muted)" }}>
               <Lock className="w-2.5 h-2.5" />Leitura
             </span>
           )}
@@ -473,7 +472,7 @@ export default function NotesPage() {
   function handleContentChange(html: string) {
     currentContent.current = html;
     // preview no sidebar: strip HTML para texto puro
-    const plain = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const plain = html.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     if (selected) {
       setNotes(prev => prev.map(n => n.id === selected.id ? { ...n, content: plain } : n));
       scheduleAutoSave(selected.id, title, html, selected.user_id);
@@ -545,7 +544,7 @@ export default function NotesPage() {
         .rich-editor ul { list-style: disc; padding-left: 1.5rem; margin: 4px 0; }
         .rich-editor ol { list-style: decimal; padding-left: 1.5rem; margin: 4px 0; }
         .rich-editor li { margin: 2px 0; }
-        .rich-editor a  { color: #3b82f6; text-decoration: underline; }
+        .rich-editor a  { color: var(--accent); text-decoration: underline; }
         .rich-editor img { max-width: 100%; border-radius: 8px; margin: 4px 0; display: block; cursor: pointer; }
         .rich-editor b, .rich-editor strong { font-weight: 700; }
         .rich-editor i, .rich-editor em { font-style: italic; }
@@ -577,19 +576,19 @@ export default function NotesPage() {
           transition: all 0.2s;
         }
         .note-task[data-status="doing"] .task-toggle {
-          border-color: #f59e0b;
-          background: rgba(245,158,11,0.1);
+          border-color: var(--color-warning);
+          background: var(--bg-warning);
         }
         .note-task[data-status="doing"] .task-toggle::after {
           content: "";
           position: absolute;
           top: 4px; left: 4px; right: 4px; bottom: 4px;
-          background: #f59e0b;
+          background: var(--color-warning);
           border-radius: 1px;
         }
         .note-task[data-status="done"] .task-toggle {
-          border-color: #22c55e;
-          background: #22c55e;
+          border-color: var(--color-done);
+          background: var(--color-done);
         }
         .note-task[data-status="done"] .task-toggle::after {
           content: "✓";
@@ -619,7 +618,7 @@ export default function NotesPage() {
           transition: all 0.2s;
         }
         .note-task:hover .task-delete { opacity: 1; }
-        .task-delete:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+        .task-delete:hover { color: var(--color-danger); background: var(--bg-danger); }
       `}</style>
 
       <div className="flex overflow-hidden" style={{ height: "calc(100vh - 3.5rem)" }}>
@@ -632,13 +631,13 @@ export default function NotesPage() {
           {/* Header */}
           <div className="p-4 flex items-center justify-between flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
             <h2 className="font-black text-sm flex items-center gap-2 uppercase tracking-widest" style={{ color: "var(--text)" }}>
-              <FileText className="w-4 h-4" style={{ color: "#f59e0b" }} />
+              <FileText className="w-4 h-4" style={{ color: "var(--color-warning)" }} />
               Notas
             </h2>
             <button
               onClick={createNote}
               className="w-8 h-8 rounded-xl text-white flex items-center justify-center transition-all active:scale-95"
-              style={{ background: "#f59e0b", boxShadow: "0 2px 8px rgba(245,158,11,0.3)" }}
+              style={{ background: "var(--color-warning)", boxShadow: "0 2px 8px var(--bg-warning)" }}
               title="Nova nota"
             >
               <Plus className="w-4 h-4" />
@@ -663,7 +662,7 @@ export default function NotesPage() {
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {isLoading ? (
               <div className="flex justify-center py-10">
-                <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#f59e0b" }} />
+                <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-warning)" }} />
               </div>
             ) : filtered.length === 0 ? (
               <p className="text-center py-10 text-xs font-black uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>
@@ -721,7 +720,7 @@ export default function NotesPage() {
               {isSaving ? (
                 <><Loader2 className="w-3.5 h-3.5 animate-spin" />Salvando...</>
               ) : lastSaved ? (
-                <><Save className="w-3.5 h-3.5" style={{ color: "#22c55e" }} />Salvo às {lastSaved}</>
+                <><Save className="w-3.5 h-3.5" style={{ color: "var(--color-done)" }} />Salvo às {lastSaved}</>
               ) : selected ? (
                 "Auto-save ativo"
               ) : ""}
@@ -742,7 +741,7 @@ export default function NotesPage() {
               <button
                 onClick={createNote}
                 className="flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all active:scale-95 flex-shrink-0"
-                style={{ background: "#f59e0b" }}
+                style={{ background: "var(--color-warning)" }}
               >
                 <Plus className="w-3.5 h-3.5" />Nova nota
               </button>
@@ -753,7 +752,7 @@ export default function NotesPage() {
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Badge de somente leitura */}
               {selectedRole === "viewer" && (
-                <div className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold flex-shrink-0" style={{ background: "rgba(107,114,128,0.08)", borderBottom: "1px solid var(--border)", color: "#6b7280" }}>
+                <div className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold flex-shrink-0" style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)", color: "var(--text-muted)" }}>
                   <Lock className="w-3 h-3" />
                   Somente visualização — você não tem permissão para editar esta nota
                 </div>
@@ -792,7 +791,7 @@ export default function NotesPage() {
                 <button
                   onClick={createNote}
                   className="text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
-                  style={{ background: "#f59e0b", boxShadow: "0 2px 8px rgba(245,158,11,0.3)" }}
+                  style={{ background: "var(--color-warning)", boxShadow: "0 2px 8px var(--bg-warning)" }}
                 >
                   Criar primeira nota
                 </button>

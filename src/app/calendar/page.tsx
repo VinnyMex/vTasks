@@ -12,15 +12,19 @@ const MONTHS    = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho"
 const SYM: Record<string, string>    = { BRL: "R$", EUR: "€", USD: "$", GBP: "£" };
 const FLAG: Record<string, string>   = { BRL: "🇧🇷", EUR: "🇪🇺", USD: "🇺🇸", GBP: "🇬🇧" };
 const CUR_COLOR: Record<string, string> = {
-  BRL: "#10b981",   // green
-  EUR: "#3b82f6",   // blue
-  USD: "#f59e0b",   // amber
+  BRL: "var(--currency-brl)",
+  EUR: "var(--currency-eur)",
+  USD: "var(--currency-usd)",
+};
+const CUR_BG: Record<string, string> = {
+  BRL: "var(--bg-done)",
+  EUR: "var(--bg-doing)",
+  USD: "var(--bg-warning)",
 };
 
-const getCurrencyColor = (cur: string) => CUR_COLOR[cur] || "#3b82f6";
+const getCurrencyColor = (cur: string) => CUR_COLOR[cur] || "var(--accent)";
 const getCurrencyBg = (cur: string) => {
-  const color = getCurrencyColor(cur);
-  return `${color}1F`; // ~12% opacity
+  return CUR_BG[cur] || "var(--accent-muted)"; // ~12% opacity
 };
 const getFlag = (cur: string) => FLAG[cur] || "💰";
 const getSymbol = (cur: string) => SYM[cur] || cur;
@@ -133,13 +137,10 @@ function DayDetailPopup({
   }, 0);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 modal-overlay" onClick={onClose} />
       <div
-        className="w-full max-w-sm rounded-2xl shadow-2xl fade-up overflow-hidden"
+        className="relative w-full max-w-sm rounded-2xl shadow-2xl fade-up overflow-hidden"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
         onClick={e => e.stopPropagation()}
       >
@@ -242,7 +243,7 @@ function DayDetailPopup({
                         </div>
                       </div>
                       {e.link && (
-                        <a href={e.link} target="_blank" rel="noreferrer" className="flex-shrink-0" style={{ color: "#3b82f6" }}>
+                        <a href={e.link} target="_blank" rel="noreferrer" className="flex-shrink-0" style={{ color: "var(--color-doing)" }}>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
@@ -268,7 +269,7 @@ function DayDetailPopup({
                   >
                     <span
                       className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: t.status === "done" ? "#22c55e" : t.status === "doing" ? "#3b82f6" : "#94a3b8" }}
+                      style={{ background: t.status === "done" ? "var(--color-done)" : t.status === "doing" ? "var(--color-doing)" : "var(--color-pending)" }}
                     />
                     <span
                       className="text-sm font-semibold flex-1 truncate"
@@ -282,8 +283,8 @@ function DayDetailPopup({
                     <span
                       className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0"
                       style={
-                        t.status === "done"  ? { background: "rgba(34,197,94,0.1)",   color: "#22c55e" } :
-                        t.status === "doing" ? { background: "rgba(59,130,246,0.1)",  color: "#3b82f6" } :
+                        t.status === "done"  ? { background: "var(--bg-done)", color: "var(--color-done)" } :
+                        t.status === "doing" ? { background: "var(--bg-doing)", color: "var(--color-doing)" } :
                                                { background: "var(--surface)",          color: "var(--text-faint)", border: "1px solid var(--border)" }
                       }
                     >
@@ -322,7 +323,7 @@ function DayDetailPopup({
                 onClick={() => { if (newText.trim()) { onAddTask(newText.trim()); setNewText(""); } }}
                 disabled={!newText.trim()}
                 className="px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all active:scale-95 disabled:opacity-50 flex-shrink-0"
-                style={{ background: "#2563eb" }}
+                style={{ background: "var(--accent)" }}
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -452,7 +453,7 @@ export default function CalendarPage() {
         <header className="mb-4 flex items-center justify-between flex-wrap gap-3 flex-shrink-0">
           <div>
             <h1 className="text-2xl font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
-              <CalendarIcon className="w-6 h-6" style={{ color: "#22c55e" }} />
+              <CalendarIcon className="w-6 h-6" style={{ color: "var(--color-done)" }} />
               Calendário
             </h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>Tarefas e gastos por data.</p>
@@ -499,7 +500,7 @@ export default function CalendarPage() {
             </div>
           ))}
           <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#3b82f6" }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--color-doing)" }} />
             Tarefa
           </div>
         </div>
@@ -523,7 +524,7 @@ export default function CalendarPage() {
 
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#22c55e" }} />
+              <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--color-done)" }} />
             </div>
           ) : (
             <div className="flex-1 grid grid-cols-7 overflow-hidden" style={{ gridTemplateRows: "repeat(6, 1fr)" }}>
@@ -547,7 +548,7 @@ export default function CalendarPage() {
                       background: !day
                         ? "var(--surface-2)"
                         : isToday(day)
-                          ? "rgba(37,99,235,0.04)"
+                          ? "var(--accent-muted)"
                           : undefined,
                       opacity: !day ? 0.3 : 1,
                     }}
@@ -560,7 +561,7 @@ export default function CalendarPage() {
                         <span
                           className="inline-flex items-center justify-center w-5 h-5 md:w-6 md:h-6 text-[10px] md:text-xs font-black rounded-full mb-1"
                           style={isToday(day)
-                            ? { background: "#2563eb", color: "#fff", boxShadow: "0 1px 6px rgba(37,99,235,0.4)" }
+                            ? { background: "var(--accent)", color: "#fff", boxShadow: "0 1px 6px var(--accent-shadow)" }
                             : { color: "var(--text-muted)" }
                           }
                         >
@@ -590,8 +591,8 @@ export default function CalendarPage() {
                               key={t.id}
                               className="text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded truncate"
                               style={
-                                t.status === "done"  ? { background: "rgba(34,197,94,0.12)",  color: "#16a34a" } :
-                                t.status === "doing" ? { background: "rgba(59,130,246,0.12)", color: "#2563eb" } :
+                                t.status === "done"  ? { background: "var(--bg-done)", color: "var(--color-done)" } :
+                                t.status === "doing" ? { background: "var(--bg-doing)", color: "var(--accent)" } :
                                                        { background: "var(--surface-2)",       color: "var(--text-faint)", border: "1px solid var(--border)" }
                               }
                             >
@@ -609,7 +610,7 @@ export default function CalendarPage() {
                         {hasEvents && (
                           <span
                             className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full md:hidden"
-                            style={{ background: dayExpenses.length > 0 ? getCurrencyColor(targetCurrency) : "#3b82f6" }}
+                            style={{ background: dayExpenses.length > 0 ? getCurrencyColor(targetCurrency) : "var(--accent)" }}
                           />
                         )}
                       </>

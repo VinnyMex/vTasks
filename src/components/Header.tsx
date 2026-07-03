@@ -13,11 +13,10 @@ import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// Apenas ações de criação — sem Configurações, sem Relatórios
 const ACTIONS = [
-  { icon: CheckSquare,     label: "Nova Tarefa",     desc: "Adicionar à lista de tarefas",    href: "/tasks",    color: "#3b82f6", bg: "rgba(59,130,246,0.10)" },
-  { icon: StickyNote,      label: "Nova Nota",        desc: "Criar nota no editor",             href: "/notes",    color: "#f59e0b", bg: "rgba(245,158,11,0.10)" },
-  { icon: DollarSign,      label: "Novo Gasto",       desc: "Registrar despesa financeira",     href: "/expenses", color: "#10b981", bg: "rgba(16,185,129,0.10)" },
+  { icon: CheckSquare, label: "Nova Tarefa",  desc: "Adicionar à lista de tarefas",  href: "/tasks",    color: "var(--color-doing)",   bg: "var(--bg-doing)"   },
+  { icon: StickyNote,  label: "Nova Nota",    desc: "Criar nota no editor",           href: "/notes",    color: "var(--color-warning)", bg: "var(--bg-warning)" },
+  { icon: DollarSign,  label: "Novo Gasto",   desc: "Registrar despesa financeira",   href: "/expenses", color: "var(--color-teal)",    bg: "var(--bg-teal)"    },
 ];
 
 export function Header() {
@@ -66,9 +65,9 @@ export function Header() {
       className="glass sticky top-0 z-30 h-14 px-4 md:px-5 flex items-center justify-between flex-shrink-0"
       style={{ borderBottom: "1px solid var(--border)" }}
     >
-      {/* ── Esquerda ────────────────────────────────────────────────── */}
+      {/* ── Esquerda ─────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 md:hidden" /> {/* espaço para botão de menu mobile do Sidebar */}
+        <div className="w-9 md:hidden" />
 
         {/* Logo mobile */}
         <div className="md:hidden flex items-center gap-2">
@@ -79,7 +78,7 @@ export function Header() {
             height={26}
           />
           <span className="font-black text-sm" style={{ color: "var(--text)" }}>
-            vTasks<span style={{ color: "#2563eb" }}>Pro</span>
+            vTasks<span style={{ color: "var(--accent)" }}>Pro</span>
           </span>
         </div>
 
@@ -88,7 +87,7 @@ export function Header() {
         </p>
       </div>
 
-      {/* ── Direita ─────────────────────────────────────────────────── */}
+      {/* ── Direita ──────────────────────────────────────────── */}
       <div className="flex items-center gap-2" ref={menuRef}>
 
         {/* Toggle Moeda */}
@@ -102,7 +101,7 @@ export function Header() {
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span className="text-[11px] font-black uppercase tracking-tighter">
-            {activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency}
+            {activeCurrency === "primary" ? primaryCurrency : secondaryCurrency}
           </span>
         </button>
 
@@ -118,15 +117,12 @@ export function Header() {
           {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Botão Criar + Dropdown */}
+        {/* Botão Criar */}
         <div className="relative">
           <button
             onClick={() => setOpen(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-sm text-white transition-all active:scale-95"
-            style={{
-              background: open ? "#1d4ed8" : "#2563eb",
-              boxShadow: "0 2px 8px rgba(37,99,235,0.35)",
-            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-sm text-white transition-all active:scale-95 btn-primary"
+            style={{ padding: "0.5rem 0.875rem" }}
           >
             {open ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             <span className="hidden sm:inline">Criar</span>
@@ -138,7 +134,7 @@ export function Header() {
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
-                boxShadow: "0 16px 40px rgba(0,0,0,0.15)",
+                boxShadow: "var(--card-shadow-lg)",
                 zIndex: 100,
               }}
             >
@@ -177,7 +173,10 @@ export function Header() {
             onClick={() => setUserMenu(v => !v)}
             aria-label="Perfil"
             className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center font-black text-xs text-white transition-all active:scale-95 flex-shrink-0"
-            style={avatarUrl ? {} : { background: "#2563eb", boxShadow: "0 1px 4px rgba(37,99,235,0.4)" }}
+            style={avatarUrl ? {} : {
+              background: "var(--accent)",
+              boxShadow: "var(--shadow-accent)",
+            }}
             title={userName}
           >
             {avatarUrl ? (
@@ -193,14 +192,15 @@ export function Header() {
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
-                boxShadow: "0 16px 40px rgba(0,0,0,0.15)",
+                boxShadow: "var(--card-shadow-lg)",
                 zIndex: 100,
               }}
             >
               {/* Info do usuário */}
               <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
-                <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-black text-sm text-white"
-                  style={avatarUrl ? {} : { background: "#2563eb" }}
+                <div
+                  className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center font-black text-sm text-white"
+                  style={avatarUrl ? {} : { background: "var(--accent)" }}
                 >
                   {avatarUrl
                     ? <Image src={avatarUrl} alt={userName} width={40} height={40} className="object-cover" />
@@ -230,18 +230,18 @@ export function Header() {
                   onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "")}
                 >
-                  <Activity className="w-4 h-4 flex-shrink-0" style={{ color: "#ef4444" }} />
+                  <Activity className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-danger)" }} />
                   <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Log de Atividades</span>
                 </button>
 
                 <button
                   onClick={async () => { setUserMenu(false); await signOut(); router.replace("/login"); }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left"
-                  onMouseEnter={e => { (e.currentTarget.style.background = "rgba(239,68,68,0.08)"); }}
+                  onMouseEnter={e => { (e.currentTarget.style.background = "var(--bg-danger)"); }}
                   onMouseLeave={e => (e.currentTarget.style.background = "")}
                 >
-                  <LogOut className="w-4 h-4 flex-shrink-0" style={{ color: "#ef4444" }} />
-                  <span className="text-sm font-semibold" style={{ color: "#ef4444" }}>Sair</span>
+                  <LogOut className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-danger)" }} />
+                  <span className="text-sm font-semibold" style={{ color: "var(--color-danger)" }}>Sair</span>
                 </button>
               </div>
             </div>

@@ -15,7 +15,7 @@ import {
 type PersonInfo = { id: string; email: string; role: string };
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
-const ROLE_COLOR: Record<string, string> = { viewer: "#6b7280", editor: "#3b82f6", admin: "#f59e0b" };
+const ROLE_COLOR: Record<string, string> = { viewer: "var(--role-viewer)", editor: "var(--role-editor)", admin: "var(--role-admin)" };
 const ROLE_LABEL: Record<string, string> = { viewer: "Visual", editor: "Editor", admin: "Admin" };
 
 function canEdit(role: Role | string | null): boolean {
@@ -27,8 +27,11 @@ function canDelete(role: Role | string | null): boolean {
 
 function RoleBadge({ role }: { role: string }) {
   return (
-    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0"
-      style={{ background: `${ROLE_COLOR[role] ?? "#6b7280"}22`, color: ROLE_COLOR[role] ?? "#6b7280" }}>
+    <span className="role-badge"
+      style={{
+        background: role === "admin" ? "var(--bg-warning)" : role === "editor" ? "var(--bg-doing)" : "rgba(142,142,147,0.12)",
+        color: ROLE_COLOR[role] ?? "var(--role-viewer)",
+      }}>
       {ROLE_LABEL[role] ?? role}
     </span>
   );
@@ -116,7 +119,7 @@ function TaskItemCard({ task, role, onToggle, onDelete }: {
   onToggle: (t: Task) => void;
   onDelete: (id: string) => void;
 }) {
-  const STATUS_COLOR: Record<string, string> = { todo: "#94a3b8", doing: "#3b82f6", done: "#22c55e" };
+  const STATUS_COLOR: Record<string, string> = { todo: "var(--color-pending)", doing: "var(--color-doing)", done: "var(--color-done)" };
   const STATUS_LABEL: Record<string, string> = { todo: "A fazer", doing: "Em andamento", done: "Concluído" };
   const allowEdit   = canEdit(role);
   const allowDelete = canDelete(role);
@@ -130,7 +133,7 @@ function TaskItemCard({ task, role, onToggle, onDelete }: {
         title={allowEdit ? "Alterar status" : "Sem permissão"}
       >
         {task.status === "done"
-          ? <CheckCircle2 className="w-5 h-5" style={{ color: "#22c55e" }} />
+          ? <CheckCircle2 className="w-5 h-5" style={{ color: "var(--color-done)" }} />
           : <div className="w-5 h-5 rounded-full border-2" style={{ borderColor: STATUS_COLOR[task.status] }} />
         }
       </button>
@@ -160,7 +163,7 @@ function TaskItemCard({ task, role, onToggle, onDelete }: {
           onClick={() => onDelete(task.id)}
           className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all flex-shrink-0"
           style={{ color: "var(--text-faint)" }}
-          onMouseEnter={ev => (ev.currentTarget.style.color = "#ef4444")}
+          onMouseEnter={ev => (ev.currentTarget.style.color = "var(--color-danger)")}
           onMouseLeave={ev => (ev.currentTarget.style.color = "var(--text-faint)")}
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -223,7 +226,7 @@ function ExpenseItemCard({ expense }: { expense: Expense }) {
           )}
         </div>
       </div>
-      <span className="text-sm font-black flex-shrink-0" style={{ color: "#10b981" }}>
+      <span className="text-sm font-black flex-shrink-0" style={{ color: "var(--currency-brl)" }}>
         {SYM[expense.currency]} {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
       </span>
     </div>
@@ -249,7 +252,7 @@ function NoteModal({ note, role, onClose, onSave }: {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose} />
+      <div className="absolute inset-0 modal-overlay" onClick={onClose} />
       <div className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
 
@@ -257,13 +260,13 @@ function NoteModal({ note, role, onClose, onSave }: {
         <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0"
           style={{ borderBottom: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4" style={{ color: "#f59e0b" }} />
+            <FileText className="w-4 h-4" style={{ color: "var(--color-warning)" }} />
             <span className="text-xs font-black uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>
               Nota Compartilhada
             </span>
             {!allowEdit && (
               <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(107,114,128,0.1)", color: "#6b7280" }}>
+                style={{ background: "rgba(142,142,147,0.10)", color: "var(--role-viewer)" }}>
                 Somente leitura
               </span>
             )}
@@ -310,8 +313,7 @@ function NoteModal({ note, role, onClose, onSave }: {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 active:scale-95"
-              style={{ background: "#2563eb" }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 active:scale-95 btn-primary"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Salvar Alterações
@@ -531,7 +533,7 @@ export default function SharedPage() {
       {/* Header */}
       <header className="mb-8">
         <h1 className="text-2xl font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
-          <Share2 className="w-6 h-6" style={{ color: "#8b5cf6" }} />
+          <Share2 className="w-6 h-6" style={{ color: "var(--color-purple)" }} />
           Compartilhados
         </h1>
         <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -541,7 +543,7 @@ export default function SharedPage() {
 
       {loading ? (
         <div className="flex justify-center py-24">
-          <Loader2 className="w-10 h-10 animate-spin" style={{ color: "#8b5cf6" }} />
+          <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--color-purple)" }} />
         </div>
       ) : !hasReceived && !hasSent ? (
         <div className="text-center py-24 rounded-3xl" style={{ border: "2px dashed var(--border)" }}>
@@ -560,26 +562,26 @@ export default function SharedPage() {
           {hasReceived && (
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.2)" }} />
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "rgba(139,92,246,0.1)" }}>
-                  <ArrowDownToLine className="w-3.5 h-3.5" style={{ color: "#8b5cf6" }} />
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#8b5cf6" }}>
+                <div className="h-px flex-1" style={{ background: "var(--bg-purple)" }} />
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "var(--bg-purple)" }}>
+                  <ArrowDownToLine className="w-3.5 h-3.5" style={{ color: "var(--color-purple)" }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--color-purple)" }}>
                     Recebidos de outros
                   </span>
                 </div>
-                <div className="h-px flex-1" style={{ background: "rgba(139,92,246,0.2)" }} />
+                <div className="h-px flex-1" style={{ background: "var(--bg-purple)" }} />
               </div>
               <div className="space-y-4">
 
                 {recTasks.some(g => g.items.length > 0) && (
-                  <Section icon={CheckCircle2} color="#3b82f6" label="Tarefas"
+                  <Section icon={CheckCircle2} color="var(--color-doing)" label="Tarefas"
                     count={recTasks.reduce((a, g) => a + g.items.length, 0)}>
                     {recTasks.map(g => {
                       if (!g.items.length) return null;
                       const owner = recOwners.find(o => o.id === g.ownerId)!;
                       const role  = roleMap[g.ownerId] ?? "viewer";
                       return (
-                        <PersonGroup key={g.ownerId} person={owner} accent="#8b5cf6"
+                        <PersonGroup key={g.ownerId} person={owner} accent="var(--color-purple)"
                           lastUpdated={getLastUpdated(g.items) || undefined}
                           lastUpdatedByEmail={getLastUpdatedEmail(g.items)}>
                           {g.items.map(t => (
@@ -595,14 +597,14 @@ export default function SharedPage() {
                 )}
 
                 {recNotes.some(g => g.items.length > 0) && (
-                  <Section icon={FileText} color="#f59e0b" label="Notas"
+                  <Section icon={FileText} color="var(--color-warning)" label="Notas"
                     count={recNotes.reduce((a, g) => a + g.items.length, 0)}>
                     {recNotes.map(g => {
                       if (!g.items.length) return null;
                       const owner = recOwners.find(o => o.id === g.ownerId)!;
                       const role  = roleMap[g.ownerId] ?? "viewer";
                       return (
-                        <PersonGroup key={g.ownerId} person={owner} accent="#8b5cf6"
+                        <PersonGroup key={g.ownerId} person={owner} accent="var(--color-purple)"
                           lastUpdated={getLastUpdated(g.items) || undefined}
                           lastUpdatedByEmail={getLastUpdatedEmail(g.items)}>
                           {g.items.map(n => (
@@ -617,13 +619,13 @@ export default function SharedPage() {
                 )}
 
                 {recExpenses.some(g => g.items.length > 0) && (
-                  <Section icon={DollarSign} color="#10b981" label="Gastos"
+                  <Section icon={DollarSign} color="var(--color-teal)" label="Gastos"
                     count={recExpenses.reduce((a, g) => a + g.items.length, 0)}>
                     {recExpenses.map(g => {
                       if (!g.items.length) return null;
                       const owner = recOwners.find(o => o.id === g.ownerId)!;
                       return (
-                        <PersonGroup key={g.ownerId} person={owner} accent="#8b5cf6"
+                        <PersonGroup key={g.ownerId} person={owner} accent="var(--color-purple)"
                           lastUpdated={getLastUpdated(g.items) || undefined}
                           lastUpdatedByEmail={getLastUpdatedEmail(g.items)}>
                           {g.items.map(e => <ExpenseItemCard key={e.id} expense={e} />)}
@@ -640,21 +642,21 @@ export default function SharedPage() {
           {hasSent && (
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-px flex-1" style={{ background: "rgba(37,99,235,0.2)" }} />
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "rgba(37,99,235,0.08)" }}>
-                  <ArrowUpFromLine className="w-3.5 h-3.5" style={{ color: "#2563eb" }} />
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#2563eb" }}>
+                <div className="h-px flex-1" style={{ background: "var(--accent-muted)" }} />
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "var(--accent-muted)" }}>
+                  <ArrowUpFromLine className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--accent)" }}>
                     Enviados por mim
                   </span>
                 </div>
-                <div className="h-px flex-1" style={{ background: "rgba(37,99,235,0.2)" }} />
+                <div className="h-px flex-1" style={{ background: "var(--accent-muted)" }} />
               </div>
               <div className="space-y-4">
 
                 {sentTasks.length > 0 && (
-                  <Section icon={CheckCircle2} color="#3b82f6" label="Tarefas" count={sentTasks.length}>
+                  <Section icon={CheckCircle2} color="var(--color-doing)" label="Tarefas" count={sentTasks.length}>
                     {sentMembers.map(m => (
-                      <PersonGroup key={m.id} person={m} accent="#2563eb"
+                      <PersonGroup key={m.id} person={m} accent="var(--accent)"
                         lastUpdated={getLastUpdated(sentTasks) || undefined}
                         lastUpdatedByEmail={getLastUpdatedEmail(sentTasks)}>
                         {sentTasks.map(t => (
@@ -669,9 +671,9 @@ export default function SharedPage() {
                 )}
 
                 {sentNotes.length > 0 && (
-                  <Section icon={FileText} color="#f59e0b" label="Notas" count={sentNotes.length}>
+                  <Section icon={FileText} color="var(--color-warning)" label="Notas" count={sentNotes.length}>
                     {sentMembers.map(m => (
-                      <PersonGroup key={m.id} person={m} accent="#2563eb"
+                      <PersonGroup key={m.id} person={m} accent="var(--accent)"
                         lastUpdated={getLastUpdated(sentNotes) || undefined}
                         lastUpdatedByEmail={getLastUpdatedEmail(sentNotes)}>
                         {sentNotes.map(n => (
@@ -685,9 +687,9 @@ export default function SharedPage() {
                 )}
 
                 {sentExpenses.length > 0 && (
-                  <Section icon={DollarSign} color="#10b981" label="Gastos" count={sentExpenses.length}>
+                  <Section icon={DollarSign} color="var(--color-teal)" label="Gastos" count={sentExpenses.length}>
                     {sentMembers.map(m => (
-                      <PersonGroup key={m.id} person={m} accent="#2563eb"
+                      <PersonGroup key={m.id} person={m} accent="var(--accent)"
                         lastUpdated={getLastUpdated(sentExpenses) || undefined}
                         lastUpdatedByEmail={getLastUpdatedEmail(sentExpenses)}>
                         {sentExpenses.map(e => <ExpenseItemCard key={e.id} expense={e} />)}

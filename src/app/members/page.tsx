@@ -12,9 +12,9 @@ type Role = "viewer" | "editor" | "admin";
 type Member = { id: string; member_id: string; email: string; role: Role; created_at: string };
 
 const ROLE_INFO: Record<Role, { label: string; desc: string; color: string; icon: React.ElementType }> = {
-  viewer: { label: "Visual", desc: "Pode apenas visualizar",       color: "#6b7280", icon: Eye },
-  editor: { label: "Editor", desc: "Pode criar e editar",          color: "#3b82f6", icon: PenLine },
-  admin:  { label: "Admin",  desc: "Pode criar, editar e excluir", color: "#f59e0b", icon: ShieldCheck },
+  viewer: { label: "Visual", desc: "Pode apenas visualizar",       color: "var(--role-viewer)", icon: Eye },
+  editor: { label: "Editor", desc: "Pode criar e editar",          color: "var(--role-editor)", icon: PenLine },
+  admin:  { label: "Admin",  desc: "Pode criar, editar e excluir", color: "var(--role-admin)",  icon: ShieldCheck },
 };
 
 export default function MembersPage() {
@@ -67,8 +67,8 @@ export default function MembersPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}>
-            <Users className="w-5 h-5" style={{ color: "#8b5cf6" }} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-purple)" }}>
+            <Users className="w-5 h-5" style={{ color: "var(--color-purple)" }} />
           </div>
           <div>
             <h1 className="text-lg font-black" style={{ color: "var(--text)" }}>Membros</h1>
@@ -77,8 +77,7 @@ export default function MembersPage() {
         </div>
         <button
           onClick={() => { setShowAdd(true); setError(null); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold"
-          style={{ background: "#2563eb", color: "#fff", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold btn-primary"
         >
           <Plus className="w-4 h-4" /> Adicionar membro
         </button>
@@ -86,7 +85,7 @@ export default function MembersPage() {
 
       {/* Lista de membros */}
       {loading ? (
-        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#2563eb" }} /></div>
+        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--accent)" }} /></div>
       ) : members.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Users className="w-10 h-10" style={{ color: "var(--text-faint)" }} />
@@ -119,7 +118,7 @@ export default function MembersPage() {
                 </select>
                 <button onClick={() => removeMember(m)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg transition-all" style={{ color: "var(--text-faint)" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.color = "#ef4444"; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--bg-danger)"; e.currentTarget.style.color = "var(--color-danger)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "var(--text-faint)"; }}>
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -132,7 +131,7 @@ export default function MembersPage() {
       {/* ── Modal adicionar membro ── */}
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowAdd(false)} />
+          <div className="absolute inset-0 modal-overlay" onClick={() => setShowAdd(false)} />
           <div className="relative w-full max-w-md rounded-2xl p-6 shadow-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-black" style={{ color: "var(--text)" }}>Adicionar membro</h2>
@@ -168,7 +167,7 @@ export default function MembersPage() {
             </p>
             {error && (
               <div className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-xl text-xs font-semibold"
-                style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
+                style={{ background: "var(--bg-danger)", color: "var(--color-danger)", border: "1px solid var(--color-danger)" }}>
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
               </div>
             )}
@@ -176,8 +175,7 @@ export default function MembersPage() {
               <button onClick={() => setShowAdd(false)} className="flex-1 py-2.5 rounded-xl text-sm font-bold"
                 style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}>Cancelar</button>
               <button onClick={addMember} disabled={adding || !email.trim()}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
-                style={{ background: "#2563eb", color: "#fff" }}>
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60 btn-primary">
                 {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Adicionar
               </button>
             </div>

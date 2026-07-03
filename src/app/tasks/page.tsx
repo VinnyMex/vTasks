@@ -15,7 +15,7 @@ function ConfirmPopup({
 }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} onClick={onCancel} />
+      <div className="absolute inset-0 modal-overlay" onClick={onCancel} />
       <div
         className="relative rounded-2xl px-6 py-5 shadow-2xl w-full max-w-xs fade-up"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
@@ -25,7 +25,7 @@ function ConfirmPopup({
           <button
             onClick={onConfirm}
             className="flex-1 py-2.5 rounded-xl text-sm font-black text-white transition-all active:scale-95"
-            style={{ background: "#2563eb" }}
+            style={{ background: "var(--accent)" }}
           >
             Sim
           </button>
@@ -77,7 +77,7 @@ function EditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.4)" }} onClick={onClose} />
+      <div className="absolute inset-0 modal-overlay" onClick={onClose} />
       <div
         className="relative rounded-2xl p-6 shadow-2xl w-full max-w-md fade-up"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
@@ -85,7 +85,7 @@ function EditModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
-            <Pencil className="w-4 h-4" style={{ color: "#3b82f6" }} />
+            <Pencil className="w-4 h-4" style={{ color: "var(--color-doing)" }} />
             Editar Tarefa
           </h2>
           <button
@@ -117,7 +117,7 @@ function EditModal({
               border: "1px solid var(--border)",
               color: "var(--text)",
             }}
-            onFocus={e => (e.currentTarget.style.borderColor = "#3b82f6")}
+            onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
             onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
           />
         </div>
@@ -139,7 +139,7 @@ function EditModal({
                 border: "1px solid var(--border)",
                 color: dueDate ? "var(--text)" : "var(--text-faint)",
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = "#3b82f6")}
+              onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
               onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
             />
             {dueDate && (
@@ -148,7 +148,7 @@ function EditModal({
                 onClick={() => setDueDate("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full transition-all"
                 style={{ color: "var(--text-faint)" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
+                onMouseEnter={e => (e.currentTarget.style.color = "var(--color-danger)")}
                 onMouseLeave={e => (e.currentTarget.style.color = "var(--text-faint)")}
                 title="Remover prazo"
               >
@@ -169,7 +169,7 @@ function EditModal({
             onClick={handleSave}
             disabled={saving || !content.trim()}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-50"
-            style={{ background: "#2563eb", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}
+            style={{ background: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Salvar
@@ -209,7 +209,7 @@ function DueBadge({ due_date, status }: { due_date: string | null | undefined; s
 
   if (state === "overdue") return (
     <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse"
-      style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
+      style={{ background: "var(--bg-danger)", color: "var(--color-danger)", border: "1px solid var(--color-danger)" }}>
       <AlertTriangle className="w-2.5 h-2.5" />
       Vencida · {fmt}
     </span>
@@ -217,7 +217,7 @@ function DueBadge({ due_date, status }: { due_date: string | null | undefined; s
 
   if (state === "today") return (
     <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-      style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>
+      style={{ background: "var(--bg-warning)", color: "var(--color-warning)", border: "1px solid var(--color-warning)" }}>
       <Calendar className="w-2.5 h-2.5" />
       Hoje · {fmt}
     </span>
@@ -225,7 +225,7 @@ function DueBadge({ due_date, status }: { due_date: string | null | undefined; s
 
   if (state === "tomorrow") return (
     <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-      style={{ background: "rgba(59,130,246,0.1)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.2)" }}>
+      style={{ background: "var(--bg-doing)", color: "var(--color-doing)", border: "1px solid var(--color-doing)" }}>
       <Calendar className="w-2.5 h-2.5" />
       Amanhã · {fmt}
     </span>
@@ -271,8 +271,8 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
       className="group flex items-center gap-4 p-4 rounded-2xl transition-all"
       style={{
         background: "var(--surface)",
-        border: isOverdue ? "1px solid rgba(239,68,68,0.4)" : "1px solid var(--border)",
-        boxShadow: isOverdue ? "0 0 0 1px rgba(239,68,68,0.1), var(--card-shadow)" : "var(--card-shadow)",
+        border: isOverdue ? "1px solid var(--color-danger)" : "1px solid var(--border)",
+        boxShadow: isOverdue ? "0 0 0 1px var(--bg-danger), var(--card-shadow)" : "var(--card-shadow)",
         opacity: task.status === "done" ? 0.6 : 1,
       }}
     >
@@ -283,19 +283,19 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
         title={allowEdit ? `Mover para ${STATUS_LABEL[STATUS_NEXT[task.status]]}` : "Sem permissão para alterar status"}
       >
         {task.status === "done" ? (
-          <CheckCircle2 className="w-6 h-6" style={{ color: "#22c55e" }} />
+          <CheckCircle2 className="w-6 h-6" style={{ color: "var(--color-done)" }} />
         ) : task.status === "doing" ? (
-          <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center" style={{ borderColor: "#3b82f6", background: "rgba(59,130,246,0.1)" }}>
-            <div className="w-2 h-2 rounded-full" style={{ background: "#3b82f6" }} />
+          <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center" style={{ borderColor: "var(--color-doing)", background: "var(--bg-doing)" }}>
+            <div className="w-2 h-2 rounded-full" style={{ background: "var(--color-doing)" }} />
           </div>
         ) : (
-          <div className="w-6 h-6 rounded-full border-2 transition-colors" style={{ borderColor: isOverdue ? "#ef4444" : "var(--border)" }} />
+          <div className="w-6 h-6 rounded-full border-2 transition-colors" style={{ borderColor: isOverdue ? "var(--color-danger)" : "var(--border)" }} />
         )}
       </button>
 
       {/* Conteúdo */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate" style={{ color: task.status === "done" ? "var(--text-faint)" : isOverdue ? "#ef4444" : "var(--text)", textDecoration: task.status === "done" ? "line-through" : "none" }}>
+        <p className="text-sm font-semibold truncate" style={{ color: task.status === "done" ? "var(--text-faint)" : isOverdue ? "var(--color-danger)" : "var(--text)", textDecoration: task.status === "done" ? "line-through" : "none" }}>
           {task.content}
         </p>
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -319,8 +319,8 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
           {/* Prioridade */}
           {task.priority && (
             <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-              style={task.priority === "high" ? { background: "rgba(239,68,68,0.1)", color: "#ef4444" } :
-                     task.priority === "medium" ? { background: "rgba(245,158,11,0.1)", color: "#f59e0b" } :
+              style={task.priority === "high" ? { background: "var(--bg-danger)", color: "var(--color-danger)" } :
+                     task.priority === "medium" ? { background: "var(--bg-warning)", color: "var(--color-warning)" } :
                      { background: "var(--surface-2)", color: "var(--text-faint)" }}>
               {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Média" : "Baixa"}
             </span>
@@ -328,7 +328,7 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
 
           {/* Badge viewer */}
           {isViewer && (
-            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: "rgba(107,114,128,0.1)", color: "#6b7280" }}>
+            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: "rgba(142,142,147,0.1)", color: "var(--text-muted)" }}>
               <Lock className="w-2.5 h-2.5" />Visualização
             </span>
           )}
@@ -341,7 +341,7 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
           className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-xl transition-all flex-shrink-0"
           style={{ color: "var(--text-faint)" }}
           title="Editar"
-          onMouseEnter={ev => { ev.currentTarget.style.background = "rgba(59,130,246,0.1)"; ev.currentTarget.style.color = "#3b82f6"; }}
+          onMouseEnter={ev => { ev.currentTarget.style.background = "var(--bg-doing)"; ev.currentTarget.style.color = "var(--color-doing)"; }}
           onMouseLeave={ev => { ev.currentTarget.style.background = ""; ev.currentTarget.style.color = "var(--text-faint)"; }}>
           <Pencil className="w-4 h-4" />
         </button>
@@ -353,7 +353,7 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
           className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-xl transition-all flex-shrink-0"
           style={{ color: "var(--text-faint)" }}
           title="Compartilhar"
-          onMouseEnter={ev => { ev.currentTarget.style.background = "rgba(37,99,235,0.1)"; ev.currentTarget.style.color = "#2563eb"; }}
+          onMouseEnter={ev => { ev.currentTarget.style.background = "var(--accent-muted)"; ev.currentTarget.style.color = "var(--accent)"; }}
           onMouseLeave={ev => { ev.currentTarget.style.background = ""; ev.currentTarget.style.color = "var(--text-faint)"; }}>
           <Share2 className="w-4 h-4" />
         </button>
@@ -364,7 +364,7 @@ function TaskCard({ task, onToggle, onDelete, onShare, onEdit, role, emailById }
         <button onClick={() => onDelete(task.id)}
           className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-xl transition-all flex-shrink-0"
           style={{ color: "var(--text-faint)" }}
-          onMouseEnter={ev => (ev.currentTarget.style.background = "rgba(239,68,68,0.1)")}
+          onMouseEnter={ev => (ev.currentTarget.style.background = "var(--bg-danger)")}
           onMouseLeave={ev => (ev.currentTarget.style.background = "")}>
           <Trash2 className="w-4 h-4" />
         </button>
@@ -473,9 +473,9 @@ export default function TasksPage() {
 
   function makeGroups(list: Task[]) {
     return [
-      { label: "A Fazer",      dot: "#94a3b8", items: sortByDue(list.filter(t => t.status === "todo"))  },
-      { label: "Em Andamento", dot: "#3b82f6", items: sortByDue(list.filter(t => t.status === "doing")) },
-      { label: "Concluído",    dot: "#22c55e", items: list.filter(t => t.status === "done")             },
+      { label: "A Fazer",      dot: "var(--color-pending)", items: sortByDue(list.filter(t => t.status === "todo"))  },
+      { label: "Em Andamento", dot: "var(--color-doing)", items: sortByDue(list.filter(t => t.status === "doing")) },
+      { label: "Concluído",    dot: "var(--color-done)", items: list.filter(t => t.status === "done")             },
     ];
   }
 
@@ -502,16 +502,16 @@ export default function TasksPage() {
         <header className="mb-8 flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
-              <CheckSquare className="w-6 h-6" style={{ color: "#3b82f6" }} />
+              <CheckSquare className="w-6 h-6" style={{ color: "var(--color-doing)" }} />
               Tarefas
             </h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>Foco no que realmente importa.</p>
           </div>
           <div
             className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full"
-            style={{ background: "rgba(34,197,94,0.1)", color: "#16a34a", border: "1px solid rgba(34,197,94,0.2)" }}
+            style={{ background: "var(--bg-done)", color: "var(--color-done)", border: "1px solid var(--color-done)" }}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--color-done)" }} />
             {onlineCount} online
           </div>
         </header>
@@ -535,7 +535,7 @@ export default function TasksPage() {
               type="submit"
               disabled={isAdding || !newTask.trim()}
               className="w-11 h-11 rounded-xl text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 flex-shrink-0"
-              style={{ background: "#2563eb", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}
+              style={{ background: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
             >
               {isAdding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
             </button>
@@ -544,7 +544,7 @@ export default function TasksPage() {
 
         {isLoading ? (
           <div className="flex justify-center py-24">
-            <Loader2 className="w-10 h-10 animate-spin" style={{ color: "#3b82f6" }} />
+            <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--color-doing)" }} />
           </div>
         ) : tasks.length === 0 ? (
           <div className="text-center py-24 rounded-3xl" style={{ border: "2px dashed var(--border)" }}>
