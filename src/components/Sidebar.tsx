@@ -5,7 +5,7 @@ import {
   Zap, CheckSquare, FileText,
   Calendar, DollarSign, BarChart2, Users, Share2,
   PanelLeftClose, PanelLeftOpen, X,
-  User, Home, TrendingUp, MapPin, Coffee, CalendarDays, ClipboardCheck, Phone, FileArchive, Luggage, Plane
+  User, Home, TrendingUp, Coffee, CalendarDays, ClipboardCheck, Phone, FileArchive, Luggage, Plane
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,7 +29,6 @@ const IMIGRACAO_NAV = [
   { icon: Home,          label: "Família",            href: "/familia-imigracao"    },
   { icon: Luggage,       label: "Checklists",         href: "/checklists-viagem"    },
   { icon: TrendingUp,    label: "Custos Imigração",   href: "/custos-imigracao"     },
-  { icon: MapPin,        label: "Timeline",           href: "/timeline-imigracao"   },
   { icon: Coffee,        label: "Passeios",           href: "/passeios"             },
   { icon: CalendarDays,  label: "Cal. Imigração",     href: "/calendario-imigracao" },
   { icon: ClipboardCheck,label: "Regularização",      href: "/regularizacao"        },

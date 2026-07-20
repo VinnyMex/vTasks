@@ -9,7 +9,16 @@ import { DEFAULT_PACKING_CHECKLISTS } from '@/components/travel-docs/data';
 
 function ChecklistsContent() {
   const [subTab, setSubTab] = useState<'docs' | 'malas'>('docs');
-  const { extendedState, profile, exchangeRate, handleChecklistsChange, handlePackingChecklistsChange } = useImigracao();
+  const { extendedState, profile, handleChecklistsChange, handlePackingChecklistsChange } = useImigracao();
+
+  const activeCurrency = extendedState.currency || 'BRL';
+  const currentRates = extendedState.exchangeRates || { EUR: 6.20, USD: 5.50 };
+
+  const currentExchangeRate = activeCurrency === 'BRL'
+    ? 1
+    : activeCurrency === 'EUR'
+      ? currentRates.EUR
+      : currentRates.USD;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -34,9 +43,9 @@ function ChecklistsContent() {
         <ChecklistManager
           checklists={extendedState.checklists || {}}
           onChangeChecklists={handleChecklistsChange}
-          currency={extendedState.currency || 'BRL'}
-          currencySymbol={CURRENCY_SYMBOLS[extendedState.currency || 'BRL']}
-          exchangeRate={exchangeRate}
+          currency={activeCurrency}
+          currencySymbol={CURRENCY_SYMBOLS[activeCurrency]}
+          exchangeRate={currentExchangeRate}
           destinationCountry={profile.destination_country}
           travelYear="2026"
         />
@@ -44,9 +53,9 @@ function ChecklistsContent() {
         <PackingManager
           checklists={extendedState.packingChecklists || DEFAULT_PACKING_CHECKLISTS}
           onChangeChecklists={handlePackingChecklistsChange}
-          currency={extendedState.currency || 'BRL'}
-          currencySymbol={CURRENCY_SYMBOLS[extendedState.currency || 'BRL']}
-          exchangeRate={exchangeRate}
+          currency={activeCurrency}
+          currencySymbol={CURRENCY_SYMBOLS[activeCurrency]}
+          exchangeRate={currentExchangeRate}
           destinationCountry={profile.destination_country}
           travelYear="2026"
         />

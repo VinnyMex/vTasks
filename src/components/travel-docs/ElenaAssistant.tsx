@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { AppState } from './types';
-import { MessageCircle, X, Send, Bot, User, ChevronDown, Loader2, Sparkles, Key, AlertCircle, Trash2, Minimize2 } from 'lucide-react';
+import { useAuth } from '@/components/AuthProvider';
+import { supabase } from '@/lib/supabase';
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Key, AlertCircle, Trash2, Minimize2 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -14,10 +15,11 @@ interface ElenaAssistantProps {
   state: AppState;
 }
 
-const STORAGE_KEY_MESSAGES = 'elena_chat_history_v1';
-const STORAGE_KEY_API_KEY = 'elena_gemini_api_key_v1';
+const STORAGE_KEY_MESSAGES = 'vtask_chat_history_v2';
+const STORAGE_KEY_API_KEY = 'vtask_openrouter_api_key_v2';
+const STORAGE_KEY_MODEL = 'vtask_openrouter_model_v2';
 
-function buildSystemContext(state: AppState): string {
+function buildSystemContext(state: AppState, dbExpenses: any[]): string {
   const members = (state.familyMembers || []).map(m =>
     `- ${m.name || 'Membro sem nome'} (${m.role || '?'}), nascimento: ${m.birthDate || 'N/A'}, passaporte válido até: ${m.passportExpiry || 'N/A'}`
   ).join('\n');
@@ -37,7 +39,26 @@ function buildSystemContext(state: AppState): string {
   const destination = state.destinationCountry || 'não definido';
   const year = state.travelYear || 'não definido';
 
-  return `Você é Elena, uma assistente especializada em imigração e organização de viagens internacionais. Você é empática, encorajadora, direta e especialista. Use um tom amigável mas profissional, em português do Brasil.
+  // 1. Gastos de Imigração (Planejador de Custos)
+  const immigrationExpenses = (state.financialExpenses || []).map(e =>
+    `- ${e.description} (${e.categoryLabel}): Estimado: R$ ${e.estimated.toFixed(2)} | Real: R$ ${e.real.toFixed(2)} | Pago: ${e.paid ? 'Sim' : 'Não'}`
+  ).join('\n');
+
+  // 2. Custos dos itens concluídos dos checklists
+  const checklistCosts = Object.entries(state.checklists || {})
+    .flatMap(([catId, items]) => items.filter(item => item.completed && (item.cost || 0) > 0))
+    .map(item => `- [Checklist] ${item.text}: R$ ${(item.cost || 0).toFixed(2)}`)
+    .join('\n');
+
+  // 3. Gastos do Controle de Gastos Geral (Supabase)
+  const generalExpenses = (dbExpenses || []).map(e => {
+    const amount = e.currency === 'BRL' ? e.amount_brl : e.currency === 'EUR' ? e.amount_eur : e.amount_usd;
+    const qty = e.quantity || 1;
+    const total = (amount || 0) * qty;
+    return `- ${e.date} | ${e.title} (${e.category || 'Outro'}): ${e.currency} ${total.toFixed(2)} (Recebedor: ${e.recipient || 'N/A'})`;
+  }).join('\n');
+
+  return `Você é o vTask Agent, um assistente especializado em imigração e organização de viagens internacionais. Você é empático, encorajador, direta e especialista. Use um tom amigável mas profissional, em português do Brasil.
 
 ## Contexto atual do usuário no app "My Travel Docs":
 - **Destino:** ${destination}
@@ -55,6 +76,18 @@ ${upcomingEvents || 'Nenhum evento próximo.'}
 ### Passeios Planejados:
 ${tours || 'Nenhum passeio cadastrado.'}
 
+### Relatórios e Dados Financeiros (Gastos) do Usuário Logado:
+Estas são as despesas reais e estimadas cadastradas pelo usuário. Use estas informações para responder com precisão matemática sobre gastos acumulados, despesas pagas/pendentes, conversões e categorias.
+
+1. Controle de Gastos Geral (Lançamentos Diários/Contabilidade):
+${generalExpenses || 'Nenhum lançamento no controle de gastos geral.'}
+
+2. Custos de Emissão/Cartórios em Checklists (Tarefas Concluídas):
+${checklistCosts || 'Nenhum custo registrado em tarefas concluídas.'}
+
+3. Planejamento Financeiro de Imigração (Estimativas da Viagem):
+${immigrationExpenses || 'Nenhuma estimativa financeira de imigração registrada.'}
+
 ---
 Você tem acesso completo ao contexto acima. Responda de forma personalizada com base nessas informações. Ajude com: documentação de imigração, passaportes, vistos, prazos, planejamento financeiro da viagem, dicas do destino, e quaisquer dúvidas relacionadas. Se o usuário perguntar algo não relacionado a viagens ou imigração, gentilmente redirecione-o.
 
@@ -62,6 +95,7 @@ Importante: seja CONCISA nas respostas (máximo 3-4 parágrafos curtos). Use emo
 }
 
 export default function ElenaAssistant({ state }: ElenaAssistantProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -75,7 +109,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
     return [{
       id: 'welcome',
       role: 'assistant',
-      content: `Olá! 👋 Sou a **Elena**, sua assistente pessoal de imigração e viagens!\n\nEstou conectada ao seu planner e posso te ajudar com:\n- 📋 Status dos seus documentos\n- 🛂 Dicas de passaporte, vistos e regularização\n- 📅 Prazos e planejamento da viagem\n- 💡 Qualquer dúvida sobre imigração\n\nComo posso te ajudar hoje?`,
+      content: `Olá! 👋 Sou o **vTask Agent**, seu assistente pessoal de imigração e viagens!\n\nEstou conectado ao seu planner e posso te ajudar com:\n- 📋 Status dos seus documentos\n- 🛂 Dicas de passaporte, vistos e regularização\n- 📅 Prazos e planejamento da viagem\n- 💡 Qualquer dúvida sobre imigração\n\nComo posso te ajudar hoje?`,
       timestamp: new Date()
     }];
   });
@@ -85,8 +119,14 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
   const [apiKey, setApiKey] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY_API_KEY) || ''; } catch { return ''; }
   });
+  const [selectedModel, setSelectedModel] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEY_MODEL) || 'google/gemini-2.5-flash:free'; } catch { return 'google/gemini-2.5-flash:free'; }
+  });
+
+  const [dbExpenses, setDbExpenses] = useState<any[]>([]);
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [tempKey, setTempKey] = useState('');
+  const [tempModel, setTempModel] = useState('');
   const [error, setError] = useState('');
   const [hoveredQuickPrompt, setHoveredQuickPrompt] = useState<string | null>(null);
 
@@ -105,6 +145,22 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, open, minimized]);
+
+  // Load database expenses in real time when chat is opened and user is authenticated
+  useEffect(() => {
+    if (!user || !open) return;
+    const loadExpenses = async () => {
+      const { data } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+      if (data) {
+        setDbExpenses(data);
+      }
+    };
+    loadExpenses();
+  }, [user, open]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -125,25 +181,44 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
     setError('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      const systemCtx = buildSystemContext(state);
+      const systemCtx = buildSystemContext(state, dbExpenses);
 
-      // Build history for multi-turn
+      // Build history for multi-turn (OpenAI / OpenRouter style)
       const history = messages
-        .filter(m => m.id !== 'welcome')
+        .filter(m => m.id !== 'welcome' && m.id !== 'welcome_new')
         .map(m => ({
-          role: m.role === 'user' ? 'user' as const : 'model' as const,
-          parts: [{ text: m.content }]
+          role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.content
         }));
 
-      const chat = ai.chats.create({
-        model: 'gemini-2.0-flash',
-        config: { systemInstruction: systemCtx },
-        history
+      const payload = {
+        model: selectedModel || 'google/gemini-2.5-flash:free',
+        messages: [
+          { role: 'system', content: systemCtx },
+          ...history,
+          { role: 'user', content: userMsg.content }
+        ]
+      };
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://vtasks-pro.local',
+          'X-Title': 'vTask Agent'
+        },
+        body: JSON.stringify(payload)
       });
 
-      const result = await chat.sendMessage({ message: userMsg.content });
-      const text = result.text || 'Não consegui gerar uma resposta. Tente novamente.';
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message = errorData.error?.message || `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || 'Não consegui gerar uma resposta. Tente novamente.';
 
       const assistantMsg: Message = {
         id: `assistant_${Date.now()}`,
@@ -154,11 +229,11 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
       setMessages(prev => [...prev, assistantMsg]);
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : String(e);
-      if (errMsg.includes('API_KEY') || errMsg.includes('401') || errMsg.includes('403')) {
-        setError('Chave de API inválida. Verifique e tente novamente.');
+      if (errMsg.includes('API_KEY') || errMsg.includes('401') || errMsg.includes('403') || errMsg.includes('Unauthorized') || errMsg.includes('key')) {
+        setError('Chave de API inválida ou expirada. Verifique e tente novamente.');
         setShowKeyInput(true);
       } else {
-        setError('Erro ao conectar à IA. Verifique sua chave e conexão.');
+        setError(`Erro ao conectar à IA: ${errMsg}`);
       }
     } finally {
       setIsLoading(false);
@@ -173,13 +248,21 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
     }
   };
 
-  const handleSaveKey = () => {
-    if (!tempKey.trim()) return;
-    const clean = tempKey.trim();
-    setApiKey(clean);
-    try { localStorage.setItem(STORAGE_KEY_API_KEY, clean); } catch {}
+  const handleSaveConfig = () => {
+    const cleanKey = tempKey.trim() || apiKey;
+    const cleanModel = tempModel.trim() || selectedModel;
+
+    setApiKey(cleanKey);
+    setSelectedModel(cleanModel);
+
+    try {
+      localStorage.setItem(STORAGE_KEY_API_KEY, cleanKey);
+      localStorage.setItem(STORAGE_KEY_MODEL, cleanModel);
+    } catch {}
+
     setShowKeyInput(false);
     setTempKey('');
+    setTempModel('');
     setError('');
   };
 
@@ -232,12 +315,12 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
           type="button"
           id="elena-chat-button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-200 cursor-pointer group"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-200 cursor-pointer group animate-scaleUp"
           style={{ background: 'var(--gradient-primary)', minHeight: '52px', boxShadow: 'var(--shadow-accent)' }}
-          title="Falar com Elena (Assistente IA)"
+          title="Falar com vTask Agent"
         >
           <Sparkles className="w-4 h-4 text-blue-200 group-hover:text-white transition-colors" />
-          <span className="text-sm font-bold">Elena</span>
+          <span className="text-sm font-bold">vTask Agent</span>
           <MessageCircle className="w-4 h-4" />
           {messages.length > 1 && (
             <span
@@ -269,7 +352,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
                 <Bot className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Elena</p>
+                <p className="text-xs font-bold text-white">vTask Agent</p>
                 <p className="text-[9px] text-blue-200">Assistente de Imigração IA</p>
               </div>
               <span className="flex items-center gap-1">
@@ -280,10 +363,14 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setShowKeyInput(!showKeyInput)}
+                onClick={() => {
+                  setTempKey(apiKey);
+                  setTempModel(selectedModel);
+                  setShowKeyInput(!showKeyInput);
+                }}
                 className="p-1.5 text-blue-200 hover:text-white rounded-lg cursor-pointer transition-colors"
                 style={{ background: 'rgba(255,255,255,0.1)' }}
-                title="Configurar API Key"
+                title="Configurar API Key e Modelo"
               >
                 <Key className="w-3.5 h-3.5" />
               </button>
@@ -322,37 +409,61 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
               {/* API Key Setup */}
               {(showKeyInput || !apiKey) && (
                 <div
-                  className="px-4 py-3 flex-shrink-0"
-                  style={{ background: 'var(--bg-warning)', borderBottom: '1px solid var(--border)' }}
+                  className="px-4 py-3 flex-shrink-0 space-y-2.5 overflow-y-auto max-h-[300px]"
+                  style={{ background: 'var(--accent-subtle)', borderBottom: '1px solid var(--border)' }}
                 >
-                  <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1" style={{ color: 'var(--color-warning)' }}>
-                    <Key className="w-3 h-3" /> Configure sua Gemini API Key
+                  <p className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1" style={{ color: 'var(--accent)' }}>
+                    <Key className="w-3.5 h-3.5" /> Configuração do vTask Agent
                   </p>
-                  <p className="text-[9px] mb-2" style={{ color: 'var(--color-warning)' }}>
-                    Obtenha grátis em <span className="font-bold">aistudio.google.com</span> → "Get API Key"
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      placeholder="AIza..."
-                      value={tempKey}
-                      onChange={e => setTempKey(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleSaveKey()}
-                      className="flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1"
-                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                    />
+                  
+                  {/* Tutorial de ajuda de fácil leitura */}
+                  <div className="text-[10px] space-y-1.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    <p>
+                      <strong>1. Obter a chave:</strong> Crie uma conta em <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="underline font-bold text-blue-600 dark:text-blue-400">openrouter.ai</a> e em <strong>Keys</strong> gere uma nova chave de API.
+                    </p>
+                    <p>
+                      <strong>2. Modelos Gratuitos:</strong> Para usar sem custos, insira o modelo grátis padrão abaixo ou pesquise mais em <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer" className="underline font-bold text-blue-600 dark:text-blue-400">openrouter.ai/models</a> (procure por modelos com o sufixo <strong>:free</strong>).
+                    </p>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>OpenRouter API Key</label>
+                      <input
+                        type="password"
+                        placeholder="sk-or-v1-..."
+                        value={tempKey}
+                        onChange={e => setTempKey(e.target.value)}
+                        className="w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Modelo Desejado</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: google/gemini-2.5-flash:free"
+                        value={tempModel}
+                        onChange={e => setTempModel(e.target.value)}
+                        className="w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 font-mono"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-1">
                     <button
                       type="button"
-                      onClick={handleSaveKey}
-                      className="text-white text-[10px] font-bold px-3 rounded-lg cursor-pointer transition-colors"
-                      style={{ background: 'var(--color-warning)' }}
+                      onClick={handleSaveConfig}
+                      className="text-white text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                      style={{ background: 'var(--accent)' }}
                     >
-                      Salvar
+                      Salvar Configuração
                     </button>
                   </div>
                   {apiKey && (
-                    <p className="text-[9px] mt-1 flex items-center gap-1" style={{ color: 'var(--color-done)' }}>
-                      ✅ API Key configurada
+                    <p className="text-[9px] flex items-center gap-1 font-semibold" style={{ color: 'var(--color-done)' }}>
+                      ✅ Configurado · Modelo: {selectedModel}
                     </p>
                   )}
                 </div>
@@ -361,11 +472,11 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
               {/* Error banner */}
               {error && (
                 <div
-                  className="px-4 py-2 flex items-center gap-2 flex-shrink-0"
+                  className="px-4 py-2 flex items-center gap-2 flex-shrink-0 animate-fadeIn"
                   style={{ background: 'var(--bg-danger)', borderBottom: '1px solid var(--border)' }}
                 >
                   <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
-                  <p className="text-[10px]" style={{ color: 'var(--color-danger)' }}>{error}</p>
+                  <p className="text-[10px] flex-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
                   <button type="button" onClick={() => setError('')} className="ml-auto cursor-pointer" style={{ color: 'var(--color-danger)' }}>
                     <X className="w-3 h-3" />
                   </button>
@@ -377,11 +488,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
                 {messages.map(msg => (
                   <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                     {/* Avatar */}
-                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${
-                      msg.role === 'assistant'
-                        ? ''
-                        : ''
-                    }`}
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5"
                       style={{
                         background: msg.role === 'assistant'
                           ? 'var(--gradient-primary)'
@@ -425,14 +532,14 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
 
                 {/* Loading indicator */}
                 {isLoading && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 animate-fadeIn">
                     <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'var(--gradient-primary)' }}>
                       <Bot className="w-3 h-3 text-white" />
                     </div>
                     <div className="rounded-2xl rounded-tl-sm px-4 py-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)' }}>
                       <div className="flex items-center gap-1.5">
                         <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--accent)' }} />
-                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Elena está pensando...</span>
+                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>vTask Agent está thinking...</span>
                       </div>
                     </div>
                   </div>
@@ -481,7 +588,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Pergunte à Elena..."
+                    placeholder="Pergunte ao vTask Agent..."
                     className="flex-1 bg-transparent text-xs resize-none focus:outline-none leading-relaxed"
                     style={{ color: 'var(--text)' }}
                     rows={1}

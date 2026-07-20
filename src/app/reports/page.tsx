@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase, type Expense, type Task } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
-import { useCurrency } from "@/components/CurrencyProvider";
+import { useCurrency, type CurrencyCode } from "@/components/CurrencyProvider";
 import { BarChart2, TrendingUp, TrendingDown, DollarSign, CheckSquare, Loader2 } from "lucide-react";
 
 const MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -17,6 +17,7 @@ function ym(dateStr: string): YM {
 
 // ── Bar simples ─────────────────────────────────────────────────────────────
 function Bar({ pct, color, label, value }: { pct: number; color: string; label: string; value: string }) {
+  const isHexOrVar = color.startsWith("#") || color.startsWith("var") || color.startsWith("rgb");
   return (
     <div className="flex items-center gap-3">
       <span className="w-8 text-[10px] font-black text-[var(--text-faint)] uppercase text-right flex-shrink-0">
@@ -24,8 +25,8 @@ function Bar({ pct, color, label, value }: { pct: number; color: string; label: 
       </span>
       <div className="flex-1 bg-[var(--surface-2)] rounded-full h-5 overflow-hidden border border-[var(--border-subtle)]">
         <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`, background: color }}
+          className={`h-full rounded-full transition-all duration-700 ${!isHexOrVar ? color : ""}`}
+          style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%`, background: isHexOrVar ? color : undefined }}
         />
       </div>
       <span className="w-28 text-xs font-bold text-[var(--text-muted)] text-right flex-shrink-0 tabular-nums">
@@ -105,7 +106,7 @@ const CAT_COLORS = [
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
+  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate, exchangeRates } = useCurrency();
   
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -144,14 +145,13 @@ export default function ReportsPage() {
 
     const totalOrig = originalValue * (e.quantity ?? 1);
 
-    if (e.currency === primaryCurrency) return totalOrig;
-    // Se e.currency !== primaryCurrency, multiplique pela exchangeRate (1 sec = X pri)
-    return totalOrig * exchangeRate;
-  }, [primaryCurrency, exchangeRate]);
+    const rate = e.currency === 'BRL' ? 1 : (exchangeRates[e.currency as CurrencyCode] ?? 1);
+    return totalOrig * rate;
+  }, [exchangeRates]);
 
   // ── Helper: Converte e Formata valor para Moeda Ativa ──────────────────────
   const formatActive = useCallback((valInPrimary: number) => {
-    const isPrimary = activeCurrency === 'primary';
+    const isPrimary = activeCurrency === 'BRL';
     const currency = isPrimary ? primaryCurrency : secondaryCurrency;
     const value = isPrimary ? valInPrimary : valInPrimary / exchangeRate;
     
@@ -178,7 +178,7 @@ export default function ReportsPage() {
 
   // ── Totais em Moeda Primária ──────────────────────────────────────────────
   const totalInPrimary = useMemo(() => filteredExp.reduce((s, e) => s + getValInPrimary(e), 0), [filteredExp, getValInPrimary]);
-  const totalInSecondary = useMemo(() => totalInPrimary / exchangeRate, [totalInPrimary, exchangeRate]);
+  const totalInSecondary = useMemo(() => totalInPrimary / (exchangeRates[secondaryCurrency as CurrencyCode] ?? 1), [totalInPrimary, exchangeRates, secondaryCurrency]);
 
   const taskDone  = filteredTasks.filter(t => t.status === "done").length;
   const taskTotal = filteredTasks.length;
@@ -205,7 +205,7 @@ export default function ReportsPage() {
 
   const donutSlices = useMemo(() => cats.map(([label, valuePrimary], i) => ({
     label,
-    value: activeCurrency === 'primary' ? valuePrimary : valuePrimary / exchangeRate,
+    value: activeCurrency === 'BRL' ? valuePrimary : valuePrimary / exchangeRate,
     color: CAT_COLORS[i % CAT_COLORS.length],
   })), [cats, activeCurrency, exchangeRate]);
 
@@ -280,14 +280,14 @@ export default function ReportsPage() {
               { 
                 icon: DollarSign,  
                 label: `Total ${primaryCurrency}`, 
-                value: `${getCurrencySymbol(primaryCurrency)} ${totalInPrimary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 
+                value: `${getCurrencySymbol(primaryCurrency)} ${totalInPrimary.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
                 color: "text-emerald-600 dark:text-emerald-400", 
                 bg: "bg-emerald-50 dark:bg-emerald-900/20" 
               },
               { 
                 icon: DollarSign,  
                 label: `Total ${secondaryCurrency}`, 
-                value: `${getCurrencySymbol(secondaryCurrency)} ${totalInSecondary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 
+                value: `${getCurrencySymbol(secondaryCurrency)} ${totalInSecondary.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 
                 color: "text-blue-600 dark:text-blue-400", 
                 bg: "bg-blue-50 dark:bg-blue-900/20" 
               },
@@ -308,7 +308,7 @@ export default function ReportsPage() {
           {view === "year" && (
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
               <h2 className="text-sm font-black text-[var(--text)] uppercase tracking-widest mb-5">
-                Gastos em {activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency} por Mês — {selYear}
+                Gastos em {activeCurrency === 'BRL' ? primaryCurrency : secondaryCurrency} por Mês — {selYear}
               </h2>
               <div className="space-y-2">
                 {monthlyData.map(({ month, sumPrimary }) => (
@@ -329,7 +329,7 @@ export default function ReportsPage() {
             {/* Gastos por categoria */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
               <h2 className="text-sm font-black text-[var(--text)] uppercase tracking-widest mb-5">
-                Gastos por Categoria ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})
+                Gastos por Categoria ({activeCurrency === 'BRL' ? primaryCurrency : secondaryCurrency})
               </h2>
               {cats.length === 0 ? (
                 <p className="text-xs text-[var(--text-faint)] text-center py-8 font-bold uppercase tracking-widest">
@@ -412,7 +412,7 @@ export default function ReportsPage() {
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
               <h2 className="text-sm font-black text-[var(--text)] uppercase tracking-widest mb-5 flex items-center gap-2">
                 <TrendingDown className="w-4 h-4 text-rose-500" />
-                Maiores Gastos ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})
+                Maiores Gastos ({activeCurrency === 'BRL' ? primaryCurrency : secondaryCurrency})
               </h2>
               <div className="space-y-3">
                 {[...filteredExp]

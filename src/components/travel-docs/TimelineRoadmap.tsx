@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TimelineTask } from './types';
-import { Clock, Check, AlertCircle, Lightbulb, Info, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { Clock, Check, Info, Plus, Trash2, Pencil, X, Lightbulb } from 'lucide-react';
 
 interface TimelineRoadmapProps {
   tasks: TimelineTask[];
@@ -12,6 +12,7 @@ interface TimelineRoadmapProps {
 
 export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, destinationCountry, travelYear }: TimelineRoadmapProps) {
   const [showTips, setShowTips] = useState<boolean>(true);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   // Form states
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -21,19 +22,58 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
   const [priority, setPriority] = useState<TimelineTask['priority']>('medium');
 
   const phases: { id: TimelineTask['timeframe']; title: string; subtitle: string; color: string }[] = [
-    { id: '6_meses', title: "6 Meses Antes", subtitle: "Preparação inicial", color: "bg-blue-500" },
-    { id: '3_meses', title: "3 Meses Antes", subtitle: "Documentos e vistos", color: "bg-purple-500" },
-    { id: '1_mes', title: "1 Mês Antes", subtitle: "Finais e malas", color: "bg-amber-500" },
-    { id: 'chegada', title: "Primeiros Dias", subtitle: "Instalação e moradia", color: "bg-teal-500" },
-    { id: 'regularizacao', title: "Regularização", subtitle: "Trâmites locais", color: "bg-indigo-500" }
+    { id: '6_meses', title: "6 Meses Antes", subtitle: "Preparação e documentação inicial", color: "bg-blue-500" },
+    { id: '3_meses', title: "3 Meses Antes", subtitle: "Apostila de Haia e traduções juramentadas", color: "bg-purple-500" },
+    { id: '1_mes', title: "1 Mês Antes", subtitle: "Passagens, seguro viagem e organização física", color: "bg-amber-500" },
+    { id: 'chegada', title: "Primeiros Dias (Na Chegada)", subtitle: "Acomodação estável e registro de residência", color: "bg-teal-500" },
+    { id: 'regularizacao', title: "Rumo à Regularização", subtitle: "Preservação de provas e assessoria legal", color: "bg-indigo-500" }
   ];
 
+  const phaseGrads: Record<TimelineTask['timeframe'], string> = {
+    '6_meses': 'linear-gradient(90deg, #1A56DB, #3B82F6)',
+    '3_meses': 'linear-gradient(90deg, #057A55, #10B981)',
+    '1_mes': 'linear-gradient(90deg, #B45309, #F59E0B)',
+    'chegada': 'linear-gradient(90deg, #6D28D9, #8B5CF6)',
+    'regularizacao': 'linear-gradient(90deg, #991B1B, #EF4444)'
+  };
+
+  const phaseShortNames: Record<TimelineTask['timeframe'], string> = {
+    '6_meses': 'F1',
+    '3_meses': 'F2',
+    '1_mes': 'F3',
+    'chegada': 'F4',
+    'regularizacao': 'F5'
+  };
+
   const timelineTips = [
-    { title: "Validade Estrita de Antecedentes", text: "Não adiante a emissão do antecedente criminal da Polícia Federal brasileira. Ele tem validade legal máxima de 90 dias a contar da emissão. Emita de 30 a 40 dias antes de embarcar." },
-    { title: "Agendamentos Prévios", text: `No seu destino (${destinationCountry || 'exterior'}), o atendimento físico em órgãos públicos (como prefeituras e delegacias de polícia) exige agendamento pela internet. Consiga suas marcações ou registros assim que fechar a moradia.` },
-    { title: "Matrícula Escolar Obrigatória", text: "O ano letivo escolar começa em períodos distintos pelo mundo, mas para crianças em idade escolar obrigatória, os órgãos de educação garantem matrícula em qualquer mês do ano mediante comprovação de moradia no local." },
-    { title: "Direção com CNH Brasileira", text: `Como turista ou recém-chegado, você pode dirigir legalmente no destino (${destinationCountry || 'exterior'}) com sua CNH brasileira por até 6 meses. Após esse período, verifique regras de homologação ou troca de carteira.` }
+    { title: "Validade Estrita de Antecedentes", text: "Não adiante a emissão do antecedente criminal da Polícia Federal brasileira. Ele tem validade legal máxima de 90 dias a contar da data de emissão. Deixe para emitir de 30 a 40 dias antes de embarcar." },
+    { title: "Agendamentos Prévios (Cita Previa)", text: `No seu destino (${destinationCountry || 'exterior'}), os atendimentos em órgãos de imigração e prefeituras exigem marcação prévia online. Monitore as marcações assim que fechar a moradia.` },
+    { title: "Escolarização Obrigatória", text: "A matrícula em escolas locais é garantida para menores de 6 a 16 anos mediante comprovação de moradia (registro de residência), independente de status migratório regular." },
+    { title: "CNH Brasileira no Exterior", text: `Como turista ou recém-chegado, você pode dirigir legalmente no destino (${destinationCountry || 'exterior'}) com sua CNH por até 6 meses. Depois, consulte regras de homologação ou troca de carteira.` }
   ];
+
+  const phaseTips: Record<TimelineTask['timeframe'], { text: string; bg: string; border: string; textCol: string }> = {
+    '6_meses': { 
+      text: "Não atrase a renovação ou emissão de novos passaportes. Eles devem ter no mínimo 1 ano de validade restante na data do embarque.",
+      bg: 'var(--bg-doing)', border: 'var(--accent-border)', textCol: 'var(--accent)'
+    },
+    '3_meses': { 
+      text: "Apostilar as certidões e contratar tradutores juramentados com antecedência evita correria e sobretaxas de prazos urgentes.",
+      bg: 'var(--bg-purple)', border: 'rgba(175,82,222,0.2)', textCol: 'var(--color-purple)'
+    },
+    '1_mes': { 
+      text: "Antecedentes criminais da PF têm validade curta de 90 dias. Emita e apostile a certidão no Brasil dentro deste intervalo de 30 dias da viagem.",
+      bg: 'var(--bg-warning)', border: 'var(--bg-warning)', textCol: 'var(--color-warning)'
+    },
+    'chegada': { 
+      text: "O registro municipal de residência (Empadronamiento) é a chave de acesso à saúde pública gratuita e matrícula escolar para crianças.",
+      bg: 'var(--bg-done)', border: 'rgba(52,199,89,0.2)', textCol: 'var(--color-done)'
+    },
+    'regularizacao': { 
+      text: "Mantenha o registro de residência contínuo e arquive todas as faturas e extratos de compras no destino. Cada documento comprova o seu tempo de permanência.",
+      bg: 'var(--bg-danger)', border: 'var(--bg-danger)', textCol: 'var(--color-danger)'
+    }
+  };
 
   const startEdit = (task: TimelineTask) => {
     setEditingTaskId(task.id);
@@ -41,6 +81,7 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
     setDescription(task.description);
     setTimeframe(task.timeframe);
     setPriority(task.priority);
+    setIsModalOpen(true);
   };
 
   const cancelEdit = () => {
@@ -49,6 +90,16 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
     setDescription('');
     setTimeframe('6_meses');
     setPriority('medium');
+  };
+
+  const openAddModal = () => {
+    cancelEdit();
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    cancelEdit();
+    setIsModalOpen(false);
   };
 
   const handleDeleteTask = (id: string) => {
@@ -78,7 +129,6 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
         return t;
       });
       onChangeTasks(updated);
-      cancelEdit();
     } else {
       const matchedPhase = phases.find(p => p.id === timeframe);
       const newTask: TimelineTask = {
@@ -91,13 +141,17 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
         priority
       };
       onChangeTasks([...tasks, newTask]);
-      setTitle('');
-      setDescription('');
     }
+    closeModal();
   };
 
+  function extractLink(text: string): string | null {
+    const match = text.match(/https?:\/\/[^\s]+/);
+    return match ? match[0] : null;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Informative Tips Area */}
       <div className="bg-cyan-50 dark:bg-cyan-950/20 p-5 rounded-2xl border border-cyan-100 dark:border-cyan-900/30 no-print">
         <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowTips(!showTips)}>
@@ -127,208 +181,143 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Form Panel - left column (hidden on print) */}
-        <div className="lg:col-span-4 space-y-6 no-print">
-          <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
-            editingTaskId 
-              ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50' 
-              : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'
-          }`}>
-            <h3 className={`text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5 ${
-              editingTaskId ? 'text-blue-700 dark:text-blue-400' : 'text-zinc-400'
-            }`}>
-              {editingTaskId ? <Pencil className="w-4 h-4 text-blue-500 animate-pulse" /> : <Plus className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />}
-              <span>{editingTaskId ? '📌 EDITANDO: Tarefa' : 'Nova Tarefa no Cronograma'}</span>
-            </h3>
-
-            <form onSubmit={handleSaveTask} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Título da Tarefa</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Tirar passaporte da família"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-zinc-900 transition-all text-zinc-800 dark:text-zinc-200"
-                  style={{ minHeight: '38px' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Descrição</label>
-                <textarea
-                  placeholder="Ex: Agendar no site da PF e pagar taxas..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-zinc-900 transition-all text-zinc-800 dark:text-zinc-200"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Fase / Época</label>
-                  <select
-                    value={timeframe}
-                    onChange={(e) => setTimeframe(e.target.value as any)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ minHeight: '38px' }}
-                  >
-                    {phases.map(p => (
-                      <option key={p.id} value={p.id}>{p.title}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Prioridade</label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ minHeight: '38px' }}
-                  >
-                    <option value="high">Alta</option>
-                    <option value="medium">Média</option>
-                    <option value="low">Baixa</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                {editingTaskId && (
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    className="flex-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold text-xs py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
-                    style={{ minHeight: '40px' }}
-                  >
-                    Cancelar
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  className={`${editingTaskId ? 'flex-1' : 'w-full'} bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-xs`}
-                  style={{ minHeight: '40px' }}
-                >
-                  {editingTaskId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                  <span>{editingTaskId ? 'Salvar Alterações' : 'Adicionar ao Cronograma'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Timeline List - right column (main timeline card) */}
-        <div className="lg:col-span-8 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xs print-card">
-          <h2 className="text-lg font-bold flex items-center gap-2 mb-1" style={{ color: "var(--text)" }}>
+      {/* Button panel above chronological track */}
+      <div className="flex justify-between items-center gap-4 no-print pb-2 border-b border-zinc-100 dark:border-zinc-800">
+        <div>
+          <h2 className="text-base font-black flex items-center gap-2" style={{ color: "var(--text)" }}>
             <Clock className="text-brand-primary w-5 h-5" />
             <span>3. Cronograma da Mudança (Linha do Tempo)</span>
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
-            Acompanhe o planejamento cronológico recomendado. Marque as tarefas principais à medida que as concluir para acompanhar seu progresso no tempo.
+          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            Acompanhe e edite o cronograma de preparação pré e pós imigração.
           </p>
+        </div>
+        <button
+          onClick={openAddModal}
+          className="btn-primary px-4 py-2.5 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer flex-shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Adicionar Tarefa ao Cronograma
+        </button>
+      </div>
 
-          {/* Chronological Timeline Track */}
-          <div className="relative border-l-2 border-zinc-100 dark:border-zinc-800 pl-4 sm:pl-6 ml-3 sm:ml-5 space-y-10">
-            {phases.map((phase) => {
-              const phaseTasks = tasks.filter(t => t.timeframe === phase.id);
-              const completedCount = phaseTasks.filter(t => t.completed).length;
-              const totalCount = phaseTasks.length;
-              const phasePct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      {/* Chronological Blocks (Style ideas.md) */}
+      <div className="space-y-6">
+        {phases.map((phase) => {
+          const phaseTasks = tasks.filter(t => t.timeframe === phase.id);
+          const completedCount = phaseTasks.filter(t => t.completed).length;
+          const totalCount = phaseTasks.length;
 
-              return (
-                <div key={phase.id} className="relative">
-                  {/* Visual marker dot on the left line */}
-                  <div className={`absolute -left-[25px] sm:-left-[33px] top-1 w-4.5 h-4.5 rounded-full border-4 border-white ${phase.color} shadow-xs`} />
+          return (
+            <div 
+              key={phase.id} 
+              className="card rounded-2xl overflow-hidden border shadow-xs" 
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+            >
+              {/* Header block with ideas.md gradient styles */}
+              <div className="flex items-center gap-3 px-5 py-3.5 text-white select-none" style={{ background: phaseGrads[phase.id] }}>
+                <div className="text-2xl font-black opacity-60 font-mono tracking-tighter leading-none pr-1">
+                  {phaseShortNames[phase.id]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-extrabold tracking-wide truncate">{phase.title}</h3>
+                  <p className="text-[10px] opacity-85 truncate mt-0.5">{phase.subtitle}</p>
+                </div>
+                <div className="flex-shrink-0 bg-white/20 px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase">
+                  {completedCount}/{totalCount} Concluídas
+                </div>
+              </div>
 
-                  {/* Phase Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                    <div>
-                      <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                        <span>{phase.title}</span>
-                        <span className="text-xs font-normal text-zinc-400">({phase.subtitle})</span>
-                      </h3>
-                    </div>
-                    {/* Progress badge */}
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <div className="w-20 bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
-                        <div className="bg-blue-600 h-full rounded-full" style={{ width: `${phasePct}%` }} />
-                      </div>
-                      <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-350 px-2 py-0.5 rounded-md font-bold font-mono">
-                        {completedCount}/{totalCount} concluídos
-                      </span>
-                    </div>
-                  </div>
+              {/* Body space of the block */}
+              <div className="p-4 space-y-4">
+                {totalCount === 0 ? (
+                  <p className="text-center py-8 text-[11px] font-bold" style={{ color: 'var(--text-faint)' }}>
+                    Nenhuma tarefa cadastrada nesta fase. Clique em "Adicionar Tarefa ao Cronograma" no topo.
+                  </p>
+                ) : (
+                  <ul className="space-y-2.5 list-none m-0 p-0">
+                    {phaseTasks.map((task) => {
+                      const tags = [];
+                      if (task.priority === 'high') {
+                        tags.push({ label: 'URGENTE', bg: 'var(--bg-danger)', color: 'var(--color-danger)' });
+                      } else if (task.priority === 'medium') {
+                        tags.push({ label: 'DOC', bg: 'var(--bg-doing)', color: 'var(--color-doing)' });
+                      } else {
+                        tags.push({ label: 'LEI', bg: 'var(--bg-done)', color: 'var(--color-done)' });
+                      }
 
-                  {/* Tasks cards under phase */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {phaseTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={() => onToggleTask(task.id)}
-                        className={`p-4 rounded-xl border text-left cursor-pointer transition-all duration-200 select-none flex flex-col justify-between hover:shadow-xs active:bg-zinc-50 dark:bg-zinc-800/40 ${
-                          task.completed
-                            ? 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-100 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400'
-                            : 'bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:bg-zinc-800/40/20 border-zinc-200 dark:border-zinc-800/80 shadow-2xs'
-                        } ${editingTaskId === task.id ? 'ring-2 ring-blue-500 border-transparent bg-blue-50/10' : ''}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Interactive checkbox */}
+                      const linkUrl = extractLink(task.description + ' ' + task.title);
+
+                      return (
+                        <li 
+                          key={task.id} 
+                          className="flex items-start gap-3.5 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800/40"
+                        >
+                          {/* Checkbox item */}
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleTask(task.id);
+                            onClick={() => onToggleTask(task.id)}
+                            className="w-4.5 h-4.5 rounded-md border flex items-center justify-center mt-0.5 flex-shrink-0 cursor-pointer transition-colors"
+                            style={{
+                              borderColor: task.completed ? 'var(--accent)' : 'var(--border-strong)',
+                              background: task.completed ? 'var(--accent)' : 'var(--surface-2)',
+                              minWidth: '18px',
+                              minHeight: '18px'
                             }}
-                            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all flex-shrink-0 cursor-pointer ${
-                              task.completed
-                                ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'border-zinc-300 bg-white dark:bg-zinc-900 hover:border-blue-500'
-                            }`}
-                            style={{ minWidth: '22px', minHeight: '22px' }}
                           >
-                            {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            {task.completed && <Check className="w-3 h-3 text-white stroke-[3.5]" />}
                           </button>
 
+                          {/* Content description */}
                           <div className="flex-1 min-w-0">
-                            <span className={`text-xs font-bold block leading-snug ${task.completed ? 'line-through text-zinc-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                            <span 
+                              className={`text-xs font-bold block leading-relaxed ${task.completed ? 'line-through' : ''}`}
+                              style={{ color: task.completed ? 'var(--text-faint)' : 'var(--text)' }}
+                            >
                               {task.title}
                             </span>
-                            <p className={`text-[11px] mt-1 leading-relaxed ${task.completed ? 'text-zinc-400 font-normal' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                              {task.description}
-                            </p>
+                            {task.description && (
+                              <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                                {task.description}
+                              </p>
+                            )}
+
+                            {/* Dynamic Badges */}
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                              {tags.map((t, i) => (
+                                <span key={i} className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded" style={{ background: t.bg, color: t.color }}>
+                                  {t.label}
+                                </span>
+                              ))}
+                              {linkUrl && (
+                                <a 
+                                  href={linkUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-[9px] font-bold hover:underline flex items-center gap-0.5" 
+                                  style={{ color: 'var(--accent)' }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded" style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>
+                                    LINK
+                                  </span>
+                                </a>
+                              )}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Priority indicator & Actions footer */}
-                        <div className="mt-3.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between w-full">
-                          <span className={`text-[8px] font-bold uppercase tracking-wider rounded px-1.5 py-0.5 ${
-                            task.priority === 'high' 
-                              ? 'bg-red-50 text-red-600' 
-                              : task.priority === 'medium'
-                              ? 'bg-amber-50 text-amber-600'
-                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
-                          }`}>
-                            {task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}
-                          </span>
-
-                          <div className="flex items-center gap-1.5 no-print">
+                          {/* Actions button */}
+                          <div className="flex items-center gap-1 flex-shrink-0 self-center no-print">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 startEdit(task);
                               }}
-                              className={`p-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:bg-zinc-800/40 transition-colors cursor-pointer ${
-                                editingTaskId === task.id ? 'text-blue-600 bg-blue-50/50' : 'text-zinc-400 hover:text-blue-500'
-                              }`}
-                              title="Editar tarefa"
+                              className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-blue-500 transition-colors cursor-pointer"
+                              title="Editar"
                               style={{ minWidth: '28px', minHeight: '28px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
-                              <Pencil className="w-3 h-3" />
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
@@ -338,28 +327,128 @@ export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, de
                                   handleDeleteTask(task.id);
                                 }
                               }}
-                              className="p-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 dark:bg-zinc-800/40 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
-                              title="Excluir tarefa"
+                              className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                              title="Excluir"
                               style={{ minWidth: '28px', minHeight: '28px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                    {phaseTasks.length === 0 && (
-                      <div className="col-span-full py-6 text-center text-zinc-400 border border-dashed border-zinc-100 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-800/40">
-                        <p className="text-[11px]">Nenhuma tarefa nesta fase.</p>
-                      </div>
-                    )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {/* Dica / Alerta at bottom of the phase */}
+                {phaseTips[phase.id] && (
+                  <div 
+                    className="p-3 rounded-xl border flex gap-2.5 text-[10px] leading-relaxed no-print" 
+                    style={{ background: phaseTips[phase.id].bg, borderColor: phaseTips[phase.id].border, color: phaseTips[phase.id].textCol }}
+                  >
+                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: phaseTips[phase.id].textCol }} />
+                    <div>
+                      <strong className="font-extrabold">Dica de Planejamento:</strong> {phaseTips[phase.id].text}
+                    </div>
                   </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CREATE/EDIT MODAL POPUP */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div 
+            className="card p-6 w-full max-w-md border animate-scaleUp" 
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+          >
+            <div className="flex justify-between items-center mb-4 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h3 className="text-sm font-black uppercase tracking-wider" style={{ color: 'var(--text)' }}>
+                {editingTaskId ? 'Editar Tarefa do Cronograma' : 'Nova Tarefa no Cronograma'}
+              </h3>
+              <button onClick={closeModal} style={{ color: 'var(--text-muted)' }} className="cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveTask} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1">Título da Tarefa *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Apostilar certidões da família"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="input text-xs"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1">Descrição</label>
+                <textarea
+                  placeholder="Ex: Ir ao cartório de notas com certidões originais..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="input text-xs"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1">Fase / Prazo</label>
+                  <select
+                    value={timeframe}
+                    onChange={(e) => setTimeframe(e.target.value as any)}
+                    className="input text-xs cursor-pointer"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    {phases.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
                 </div>
-              );
-            })}
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-1">Prioridade</label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value as any)}
+                    className="input text-xs cursor-pointer"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  >
+                    <option value="high">Alta / Urgente</option>
+                    <option value="medium">Média / Doc</option>
+                    <option value="low">Baixa / Info</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+                <button 
+                  type="button" 
+                  onClick={closeModal} 
+                  className="btn-secondary px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary px-4 py-2 text-white rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

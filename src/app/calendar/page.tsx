@@ -115,7 +115,7 @@ function groupByCurrency(expenses: Expense[]) {
   return totals;
 }
 
-/* ── Popup detalhes do dia ─────────────────────────────────────────────── */
+/* ── Popup detalhes do dia ───────────────────────────────────────────────── */
 function DayDetailPopup({
   day, month, year,
   tasks, expenses,
@@ -129,7 +129,7 @@ function DayDetailPopup({
   const [newText, setNewText] = useState("");
   const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
   
-  const targetCurrency = activeCurrency === "primary" ? primaryCurrency : secondaryCurrency;
+  const targetCurrency = activeCurrency === "BRL" ? primaryCurrency : secondaryCurrency;
   
   const totals = groupByCurrency(expenses);
   const totalInActiveCurrency = expenses.reduce((acc, e) => {
@@ -165,7 +165,7 @@ function DayDetailPopup({
 
         <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
 
-          {/* ── Gastos do dia ─────────────────────────────────────────── */}
+          {/* ── Gastos do dia ────────────────────────────────────────────── */}
           {expenses.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -254,7 +254,7 @@ function DayDetailPopup({
             </div>
           )}
 
-          {/* ── Tarefas do dia ─────────────────────────────────────────── */}
+          {/* ── Tarefas do dia ────────────────────────────────────────────── */}
           {tasks.length > 0 && (
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest mb-3" style={{ color: "var(--text-faint)" }}>
@@ -302,7 +302,7 @@ function DayDetailPopup({
             </p>
           )}
 
-          {/* ── Adicionar tarefa rápida ────────────────────────────────── */}
+          {/* ── Adicionar tarefa rápida ───────────────────────────────────── */}
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-faint)" }}>Nova tarefa</p>
             <div className="flex gap-2">
@@ -335,7 +335,7 @@ function DayDetailPopup({
   );
 }
 
-/* ── Page ──────────────────────────────────────────────────────────────── */
+/* ── Page ────────────────────────────────────────────────────────────────── */
 export default function CalendarPage() {
   const { user } = useAuth();
   const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
@@ -346,7 +346,7 @@ export default function CalendarPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  const targetCurrency = activeCurrency === "primary" ? primaryCurrency : secondaryCurrency;
+  const targetCurrency = activeCurrency === "BRL" ? primaryCurrency : secondaryCurrency;
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -568,7 +568,7 @@ export default function CalendarPage() {
                           {day}
                         </span>
 
-                        {/* Total do dia na moeda ativa */}
+                        {/* Total do dia na moeda activa */}
                         {dayExpenses.length > 0 && (
                           <div className="flex flex-wrap gap-0.5 mb-1">
                             <div

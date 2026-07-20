@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import { useCurrency } from "@/components/CurrencyProvider";
+import { useCurrency, CURRENCY_SYMBOLS } from "@/components/CurrencyProvider";
 import { Settings, Moon, Sun, Bell, Shield, Users, Info, Check, ChevronRight, DollarSign, RefreshCw } from "lucide-react";
 import Image from "next/image";
 
@@ -117,7 +117,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /* ── Page ─────────────────────────────────────────────────────────────── */
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
-  const { primaryCurrency, secondaryCurrency, exchangeRate, setPrimaryCurrency, setSecondaryCurrency, setExchangeRate } = useCurrency();
+  const { exchangeRates, setExchangeRate } = useCurrency();
   const [notif, setNotif]     = useState(true);
   const [sound, setSound]     = useState(false);
   const [compact, setCompact] = useState(false);
@@ -159,58 +159,31 @@ export default function SettingsPage() {
 
       {/* Moeda e Câmbio */}
       <Section title="Moeda e Câmbio">
-        <div className="px-5 py-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs" style={{ color: "var(--text-faint)" }}>
+            Configure as taxas de câmbio abaixo. O seletor de moeda ativa fica no cabeçalho do app e se aplica a todo o sistema em tempo real.
+          </p>
+          {(["EUR", "USD"] as const).map(c => (
+            <div key={c}>
               <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--text-faint)" }}>
-                Moeda Principal
+                Taxa de Câmbio — {c} (1 {CURRENCY_SYMBOLS[c]} = X BRL)
               </label>
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
                 <DollarSign className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
                 <input
-                  type="text"
-                  value={primaryCurrency}
-                  onChange={(e) => setPrimaryCurrency(e.target.value.toUpperCase())}
+                  type="number"
+                  value={exchangeRates[c]}
+                  onChange={(e) => setExchangeRate(c, parseFloat(e.target.value) || 0)}
+                  step="0.01"
+                  min="0.01"
                   className="bg-transparent border-none focus:ring-0 text-sm font-bold w-full p-0"
                   style={{ color: "var(--text)" }}
-                  placeholder="BRL"
+                  placeholder="6.20"
                 />
+                <span className="text-[10px] font-bold flex-shrink-0" style={{ color: "var(--text-faint)" }}>BRL</span>
               </div>
             </div>
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--text-faint)" }}>
-                Moeda Secundária
-              </label>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                <RefreshCw className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-                <input
-                  type="text"
-                  value={secondaryCurrency}
-                  onChange={(e) => setSecondaryCurrency(e.target.value.toUpperCase())}
-                  className="bg-transparent border-none focus:ring-0 text-sm font-bold w-full p-0"
-                  style={{ color: "var(--text)" }}
-                  placeholder="EUR"
-                />
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: "var(--text-faint)" }}>
-              Taxa de Câmbio (1 {secondaryCurrency} = X {primaryCurrency})
-            </label>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-              <RefreshCw className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} />
-              <input
-                type="number"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
-                step="0.01"
-                className="bg-transparent border-none focus:ring-0 text-sm font-bold w-full p-0"
-                style={{ color: "var(--text)" }}
-                placeholder="6.20"
-              />
-            </div>
-          </div>
+          ))}
         </div>
       </Section>
 

@@ -40,6 +40,7 @@ const InputPairEur = ({ label, eurValue, onChange, exchange }: any) => (
 function VisaoGeralContent() {
   const {
     profile, updateProfileField, handleSyncIdeias,
+    isSyncingAI, handleAISync,
     completionPercentage, completedTasks, totalTasks,
     scenarios, showAddScenario, setShowAddScenario, editingScenarioId, setEditingScenarioId,
     scenarioName, setScenarioName, author, setAuthor,
@@ -50,7 +51,32 @@ function VisaoGeralContent() {
   } = useImigracao();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn relative">
+      {/* Overlay de Sincronização Inteligente por IA */}
+      {isSyncingAI && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="card p-8 rounded-3xl max-w-md border border-zinc-200 dark:border-zinc-800/80 shadow-2xl space-y-6 animate-scaleUp" style={{ background: 'var(--surface)' }}>
+            <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin" />
+              <Plane className="w-8 h-8 text-amber-500 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-black uppercase tracking-wider" style={{ color: 'var(--text)' }}>Construindo Sua Jornada</h3>
+              <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                O <span style={{ color: 'var(--accent)' }}>vTask Agent</span> está utilizando a API do OpenRouter para estruturar todas as regras, passeios, custos, malas e contatos específicos para:
+              </p>
+              <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 text-xs font-bold space-y-1 text-left">
+                <div style={{ color: 'var(--text)' }}>✈️ Destino: {profile.destination_country} ({profile.destination_city})</div>
+                <div style={{ color: 'var(--text-faint)' }}>🎯 Visto: {profile.immigration_goal}</div>
+              </div>
+            </div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-amber-500 animate-pulse">
+              Isso pode levar de 15 a 30 segundos...
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6 lg:col-span-1">
         <div className="card p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3 mb-4">
@@ -78,9 +104,15 @@ function VisaoGeralContent() {
                 {[1,2,3,4,5,6,7,8].map(q => <option key={q} value={q}>Trimestre {q} ({q * 3}º mês)</option>)}
               </select>
             </div>
-            <button type="button" onClick={handleSyncIdeias} className="w-full mt-2 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-sm">
-              📥 Sincronizar dados do ideias.md
-            </button>
+            
+            <div className="pt-2 space-y-2 border-t" style={{ borderColor: 'var(--border)' }}>
+              <button type="button" onClick={handleAISync} className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md">
+                ✨ Sincronizar Jornada com IA
+              </button>
+              <p className="text-[10px] text-center" style={{ color: 'var(--text-faint)' }}>
+                Requer a API do OpenRouter ativa nas configurações do vTask Agent.
+              </p>
+            </div>
           </div>
         </div>
 

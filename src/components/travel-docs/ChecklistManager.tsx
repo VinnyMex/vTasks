@@ -24,6 +24,8 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
   const [showTips, setShowTips] = useState<boolean>(true);
 
+  const effectiveRate = currency === 'BRL' ? 1 : exchangeRate;
+
   // Hover states
   const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
       completed: false,
       notes: '',
       priority: newItemPriority,
-      cost: parsedCostInput * exchangeRate
+      cost: parsedCostInput * effectiveRate
     };
 
     onChangeChecklists(activeCategory, [...currentItems, newItem]);
@@ -225,13 +227,13 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
           <div className="p-3 rounded-xl" style={{ background: "var(--surface-2)" }}>
             <span className="text-[10px] uppercase font-bold block" style={{ color: "var(--text-muted)" }}>Custo nesta Categoria ({categories.find(c => c.id === activeCategory)?.name})</span>
             <span className="text-sm font-extrabold" style={{ color: "var(--text)" }}>
-              {currencySymbol} {Math.round(currentCategoryCostsBRL / exchangeRate).toLocaleString('pt-BR')}
+              {currencySymbol} {Math.round(currentCategoryCostsBRL / effectiveRate).toLocaleString('pt-BR')}
             </span>
           </div>
           <div className="p-3 rounded-xl" style={{ background: "var(--bg-done)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--border)" }}>
             <span className="text-[10px] uppercase font-bold block" style={{ color: "var(--accent)" }}>Custo Total de Todos os Documentos</span>
             <span className="text-sm font-extrabold" style={{ color: "var(--accent)" }}>
-              {currencySymbol} {Math.round(globalChecklistCostsBRL / exchangeRate).toLocaleString('pt-BR')}
+              {currencySymbol} {Math.round(globalChecklistCostsBRL / effectiveRate).toLocaleString('pt-BR')}
             </span>
           </div>
         </div>
@@ -439,8 +441,8 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
                       }`} style={{ color: item.completed ? "var(--text-muted)" : "var(--text)" }}>
                         <span>{interpolateText(item.text, destinationCountry, travelYear)}</span>
                         {item.cost && item.cost > 0 ? (
-                          <span className="inline-flex items-center gap-1 font-semibold text-[10px] px-2 py-0.5 rounded-md font-mono" style={{ background: "var(--bg-done)", color: "var(--color-done)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--color-done)", borderOpacity: 0.3 }}>
-                            {currencySymbol} {Math.round(item.cost / exchangeRate).toLocaleString('pt-BR')}
+                          <span className="inline-flex items-center gap-1 font-semibold text-[10px] px-2 py-0.5 rounded-md font-mono" style={{ background: "var(--bg-done)", color: "var(--color-done)", border: '1px solid var(--color-done)' }}>
+                            {currencySymbol} {Math.round(item.cost / effectiveRate).toLocaleString('pt-BR')}
                           </span>
                         ) : null}
                       </p>
@@ -525,11 +527,11 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
                           <span className="absolute left-3 top-1/2 -tranzinc-y-1/2 font-semibold font-mono text-xs" style={{ color: "var(--text-muted)" }}>{currencySymbol}</span>
                           <input
                             type="number"
-                            value={item.cost ? Math.round(item.cost / exchangeRate) : ''}
+                            value={item.cost ? Math.round(item.cost / effectiveRate) : ''}
                             onChange={(e) => {
                               const typed = parseFloat(e.target.value) || 0;
                               // Store internally as base BRL
-                              handleUpdateCost(item.id, typed * exchangeRate);
+                              handleUpdateCost(item.id, typed * effectiveRate);
                             }}
                             placeholder="Ex: 150"
                             className="w-full rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"

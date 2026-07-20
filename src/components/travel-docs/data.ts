@@ -206,7 +206,8 @@ export const INITIAL_STATE: AppState = {
   events: [],
   googleClientId: '',
   googleCalendarId: '',
-  googleSyncEnabled: false
+  googleSyncEnabled: false,
+  exchangeRates: { EUR: 6.20, USD: 5.50 }
 };
 
 export function interpolateText(text: string, country?: string, year?: string): string {

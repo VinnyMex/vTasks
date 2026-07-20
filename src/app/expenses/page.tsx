@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase, type Expense } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
-import { useCurrency } from "@/components/CurrencyProvider";
+import { useCurrency, type CurrencyCode } from "@/components/CurrencyProvider";
 import { logActivity } from "@/lib/useActivityLog";
 import { useRoleMap, resolveRole, canEdit, canDelete } from "@/lib/useMyRole";
 import { ShareItemModal } from "@/components/ShareItemModal";
@@ -43,7 +43,7 @@ const COL_WIDTHS = "grid-cols-[90px_1fr_120px_100px_60px_80px_110px_90px]";
 
 export default function ExpensesPage() {
   const { user } = useAuth();
-  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
+  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate, exchangeRates } = useCurrency();
   const roleMap = useRoleMap();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,21 +82,18 @@ export default function ExpensesPage() {
                  : (e.amount_usd ?? 0);
     const totalOrig = amount * qty;
 
-    if (e.currency === primaryCurrency) return totalOrig;
-    if (e.currency === secondaryCurrency) return totalOrig * exchangeRate;
-    
-    // Fallback: se não for nenhuma das duas, assume-se que primaryCurrency lida com o valor original
-    return e.currency === primaryCurrency ? totalOrig : totalOrig * exchangeRate;
-  }, [primaryCurrency, secondaryCurrency, exchangeRate]);
+    const rate = e.currency === 'BRL' ? 1 : (exchangeRates[e.currency as CurrencyCode] ?? 1);
+    return totalOrig * rate;
+  }, [exchangeRates]);
 
   /** Formata o valor para a moeda ativa */
   const formatActive = useCallback((valInPrimary: number) => {
-    const isPrimary = activeCurrency === 'primary';
+    const isPrimary = activeCurrency === 'BRL';
     const currency = isPrimary ? primaryCurrency : secondaryCurrency;
     const value = isPrimary ? valInPrimary : valInPrimary / exchangeRate;
     
     const symbol = currency === "BRL" ? "R$" : (currency === "EUR" ? "€" : (currency === "USD" ? "$" : currency));
-    return `${symbol} ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    return `${symbol} ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, [activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate]);
 
   const load = useCallback(async () => {
@@ -408,20 +405,20 @@ export default function ExpensesPage() {
       {/* ── Totais ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="card p-5 flex flex-col justify-center" style={{ background: "var(--accent-muted)" }}>
-          <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "var(--text-faint)" }}>Total Acumulado ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})</p>
+          <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "var(--text-faint)" }}>Total Acumulado ({activeCurrency === 'BRL' ? primaryCurrency : secondaryCurrency})</p>
           <p className="text-3xl font-black tabular-nums" style={{ color: "var(--accent)" }}>{formatActive(totalPrimary)}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-4 flex flex-col justify-center" style={{ background: "var(--surface)" }}>
             <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: "var(--text-faint)" }}>Total {primaryCurrency}</p>
             <p className="text-lg font-black tabular-nums" style={{ color: "var(--text)" }}>
-              {primaryCurrency === 'BRL' ? 'R$' : primaryCurrency} {totalPrimary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              {primaryCurrency === 'BRL' ? 'R$' : primaryCurrency} {totalPrimary.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
           <div className="card p-4 flex flex-col justify-center" style={{ background: "var(--surface)" }}>
             <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: "var(--text-faint)" }}>Total {secondaryCurrency}</p>
             <p className="text-lg font-black tabular-nums" style={{ color: "var(--text)" }}>
-              {secondaryCurrency === 'EUR' ? '€' : secondaryCurrency} {(totalPrimary / exchangeRate).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              {secondaryCurrency === 'EUR' ? '€' : (secondaryCurrency === 'USD' ? '$' : secondaryCurrency)} {(totalPrimary / (exchangeRates[secondaryCurrency as CurrencyCode] ?? 1)).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
@@ -493,7 +490,7 @@ export default function ExpensesPage() {
           <div>Categ.</div>
           <div className="text-right">Qtd.</div>
           <div>Origem</div>
-          <div className="text-right">Valor ({activeCurrency === 'primary' ? primaryCurrency : secondaryCurrency})</div>
+          <div className="text-right">Valor ({activeCurrency === 'BRL' ? primaryCurrency : secondaryCurrency})</div>
           <div />
         </div>
 

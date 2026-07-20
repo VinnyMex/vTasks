@@ -1,13 +1,13 @@
 "use client";
 
 import { useTheme } from "@/components/ThemeProvider";
-import { useCurrency } from "@/components/CurrencyProvider";
+import { useCurrency, CURRENCY_SYMBOLS, CURRENCY_LABELS, CurrencyCode } from "@/components/CurrencyProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { signOut } from "@/lib/auth";
 import {
   Moon, Sun, Plus, CheckSquare,
   DollarSign, X, StickyNote, Settings, LogOut, Activity,
-  RefreshCw,
+  ChevronDown, Pencil, Check,
 } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
@@ -19,21 +19,28 @@ const ACTIONS = [
   { icon: DollarSign,  label: "Novo Gasto",   desc: "Registrar despesa financeira",   href: "/expenses", color: "var(--color-teal)",    bg: "var(--bg-teal)"    },
 ];
 
+const CURRENCIES: CurrencyCode[] = ["BRL", "EUR", "USD"];
+
 export function Header() {
   const { theme, toggleTheme } = useTheme();
-  const { activeCurrency, primaryCurrency, secondaryCurrency, toggleActiveCurrency } = useCurrency();
+  const {
+    activeCurrency, exchangeRates, currencySymbol,
+    setActiveCurrency, setExchangeRate,
+  } = useCurrency();
   const { user }               = useAuth();
   const [open, setOpen]        = useState(false);
   const [userMenu, setUserMenu] = useState(false);
-  const menuRef                = useRef<HTMLDivElement>(null);
-  const userMenuRef            = useRef<HTMLDivElement>(null);
-  const router                 = useRouter();
 
-  const avatarUrl  = user?.user_metadata?.avatar_url as string | undefined;
-  const userName   = (user?.user_metadata?.full_name ?? user?.email ?? "Usuário") as string;
-  const userEmail  = user?.email ?? "";
-  const initials   = userName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase();
+  const menuRef     = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const router      = useRouter();
 
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const userName  = (user?.user_metadata?.full_name ?? user?.email ?? "Usuário") as string;
+  const userEmail = user?.email ?? "";
+  const initials  = userName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase();
+
+  // Fecha menus ao clicar fora
   useEffect(() => {
     if (!open) return;
     const h = (e: MouseEvent) => {
@@ -88,22 +95,52 @@ export function Header() {
       </div>
 
       {/* ── Direita ──────────────────────────────────────────── */}
-      <div className="flex items-center gap-2" ref={menuRef}>
+      <div className="flex items-center gap-2">
 
-        {/* Toggle Moeda */}
-        <button
-          onClick={toggleActiveCurrency}
-          aria-label="Alternar moeda"
-          className="h-9 px-2 flex items-center gap-1.5 rounded-xl transition-colors"
-          style={{ color: "var(--text-muted)" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-          onMouseLeave={e => (e.currentTarget.style.background = "")}
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-black uppercase tracking-tighter">
-            {activeCurrency === "primary" ? primaryCurrency : secondaryCurrency}
-          </span>
-        </button>
+        {/* ── Seletor de Moeda Global Exposto Diretamente ──────── */}
+        <div className="flex items-center gap-1.5 no-print">
+          <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/60 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800/80">
+            {CURRENCIES.map(c => {
+              const isActive = activeCurrency === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => setActiveCurrency(c)}
+                  className={`h-7 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all cursor-pointer flex items-center gap-1 ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  }`}
+                  style={{ minHeight: '28px' }}
+                >
+                  <span className="font-extrabold">{CURRENCY_SYMBOLS[c]}</span>
+                  <span>{c}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeCurrency !== "BRL" && (
+            <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800/40 px-2 py-1 rounded-lg text-[10px] font-bold border border-zinc-200 dark:border-zinc-800/60 h-9">
+              <span className="text-zinc-500 dark:text-zinc-400">1 {currencySymbol} = </span>
+              <input
+                type="number"
+                step="0.01"
+                min="0.1"
+                value={exchangeRates[activeCurrency]}
+                onChange={e => {
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val) && val > 0) {
+                    setExchangeRate(activeCurrency, val);
+                  }
+                }}
+                className="w-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-1 py-0.5 text-center font-mono font-bold focus:outline-none focus:border-blue-500 h-6"
+                style={{ color: "var(--text)" }}
+              />
+              <span className="text-zinc-500 dark:text-zinc-400">BRL</span>
+            </div>
+          )}
+        </div>
 
         {/* Toggle tema */}
         <button
@@ -118,7 +155,7 @@ export function Header() {
         </button>
 
         {/* Botão Criar */}
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             onClick={() => setOpen(v => !v)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-sm text-white transition-all active:scale-95 btn-primary"

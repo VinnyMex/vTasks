@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { FinancialExpense } from './types';
 import { DollarSign, Plus, Trash2, Check, TrendingUp, AlertCircle, RefreshCw, Lightbulb, Info, Pencil, X } from 'lucide-react';
+import { useCurrency } from '@/components/CurrencyProvider';
 
 interface FinancialPlannerProps {
   expenses: FinancialExpense[];
   onChangeExpenses: (updated: FinancialExpense[]) => void;
-  currency: 'BRL' | 'EUR' | 'USD';
-  currencySymbol: string;
-  exchangeRate: number;
-  onUpdateExchangeRate: (rate: number) => void;
-  onChangeCurrency: (c: 'BRL' | 'EUR' | 'USD') => void;
+  currency?: 'BRL' | 'EUR' | 'USD';
+  currencySymbol?: string;
+  exchangeRate?: number;
+  onUpdateExchangeRate?: (rate: number) => void;
+  onChangeCurrency?: (c: 'BRL' | 'EUR' | 'USD') => void;
   destinationCountry?: string;
   travelYear?: string;
 }
@@ -17,14 +18,16 @@ interface FinancialPlannerProps {
 export default function FinancialPlanner({ 
   expenses, 
   onChangeExpenses, 
-  currency, 
-  currencySymbol, 
-  exchangeRate, 
-  onUpdateExchangeRate,
-  onChangeCurrency,
+  currency: _currency, 
+  currencySymbol: _currencySymbol, 
+  exchangeRate: _exchangeRate, 
+  onUpdateExchangeRate: _onUpdateExchangeRate,
+  onChangeCurrency: _onChangeCurrency,
   destinationCountry,
   travelYear
 }: FinancialPlannerProps) {
+  
+  const { activeCurrency: currency, currencySymbol, exchangeRate, setExchangeRate } = useCurrency();
   
   // Custom new expense state
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
@@ -208,45 +211,6 @@ export default function FinancialPlanner({
             </p>
           </div>
           
-          {/* Currency Configuration */}
-          <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl self-start sm:self-auto no-print">
-            <button
-              type="button"
-              onClick={() => onChangeCurrency('BRL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currency === 'BRL'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:text-zinc-200'
-              }`}
-              style={{ minHeight: '36px' }}
-            >
-              R$ (BRL)
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeCurrency('EUR')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currency === 'EUR'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:text-zinc-200'
-              }`}
-              style={{ minHeight: '36px' }}
-            >
-              € (EUR)
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeCurrency('USD')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                currency === 'USD'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:text-zinc-200'
-              }`}
-              style={{ minHeight: '36px' }}
-            >
-              $ (USD)
-            </button>
-          </div>
         </div>
 
         {/* Exchange Rate Adjustment */}
@@ -263,7 +227,7 @@ export default function FinancialPlanner({
                   type="number"
                   step="0.01"
                   value={exchangeRate}
-                  onChange={(e) => onUpdateExchangeRate(Math.max(0.1, parseFloat(e.target.value) || 1))}
+                  onChange={(e) => setExchangeRate(currency, Math.max(0.1, parseFloat(e.target.value) || 1))}
                   className="w-16 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-1.5 py-0.5 text-xs font-semibold text-center focus:ring-1 focus:ring-blue-500"
                 />
                 <span>Reais (BRL)</span>
@@ -277,17 +241,17 @@ export default function FinancialPlanner({
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-            <span className="block text-[11px] font-medium text-blue-600 uppercase tracking-wider">Total Estimado ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-blue-900 block mt-0.5">{formatValue(totalEstimatedBRL)}</span>
+          <div className="p-3 bg-blue-50/50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900/50">
+            <span className="block text-[11px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">Total Estimado ({currency})</span>
+            <span className="text-base sm:text-lg font-bold text-blue-900 dark:text-blue-200 block mt-0.5">{formatValue(totalEstimatedBRL)}</span>
           </div>
-          <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
-            <span className="block text-[11px] font-medium text-emerald-600 uppercase tracking-wider">Total Realizado ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-emerald-900 block mt-0.5">{formatValue(totalRealBRL)}</span>
+          <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+            <span className="block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Realizado ({currency})</span>
+            <span className="text-base sm:text-lg font-bold text-emerald-900 dark:text-emerald-200 block mt-0.5">{formatValue(totalRealBRL)}</span>
           </div>
-          <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-            <span className="block text-[11px] font-medium text-indigo-600 uppercase tracking-wider">Total Pago ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-indigo-900 block mt-0.5">{formatValue(totalPaidBRL)}</span>
+          <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
+            <span className="block text-[11px] font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Pago ({currency})</span>
+            <span className="text-base sm:text-lg font-bold text-indigo-900 dark:text-indigo-200 block mt-0.5">{formatValue(totalPaidBRL)}</span>
           </div>
           <div className="p-3 bg-zinc-100 dark:bg-zinc-800/70 rounded-xl border border-zinc-200 dark:border-zinc-800">
             <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Pendente / Poupar ({currency})</span>

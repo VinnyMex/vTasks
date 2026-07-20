@@ -86,10 +86,12 @@ interface ImigracaoContextType {
   docModal: { open: boolean; file?: File; name: string; category: string; expiry_date: string; associated_quarter: string; notes: string };
   isUploading: boolean;
 
-  // Google Calendar
-  isGoogleConnected: boolean;
-  isSimulatedConnection: boolean;
-  syncLogs: string[];
+  // Todoist
+  todoistToken: string;
+  setTodoistToken: React.Dispatch<React.SetStateAction<string>>;
+  isTodoistConnected: boolean;
+  isTodoistSimulated: boolean;
+  todoistSyncLogs: string[];
 
   // Estatísticas
   totalTasks: number;
@@ -112,6 +114,8 @@ interface ImigracaoContextType {
   loadAllData: () => Promise<void>;
   updateExtendedState: (newState: AppState) => Promise<void>;
   handleSyncIdeias: () => Promise<void>;
+  isSyncingAI: boolean;
+  handleAISync: () => Promise<void>;
   handleFamilyMembersChange: (updated: FamilyMember[]) => void;
   handleChecklistsChange: (categoryId: string, items: any[]) => void;
   handlePackingChecklistsChange: (categoryId: string, items: any[]) => void;
@@ -123,9 +127,9 @@ interface ImigracaoContextType {
   handleAddEvent: (event: AppEvent) => void;
   handleUpdateEvent: (updated: AppEvent) => void;
   handleDeleteEvent: (eventId: string) => void;
-  handleTriggerGeneralSync: () => Promise<void>;
-  handleDisconnectGoogle: () => void;
-  handleConnectSimulated: () => void;
+  handleTriggerTodoistSync: (tokenInput?: string) => Promise<void>;
+  handleDisconnectTodoist: () => void;
+  handleConnectTodoistSimulated: () => void;
   updateProfileField: (field: string, value: any) => Promise<void>;
   toggleChecklistTask: (taskId: string, isCompleted: boolean) => Promise<void>;
   saveTask: (e: React.FormEvent) => Promise<void>;
@@ -166,18 +170,16 @@ const ImigracaoContext = createContext<ImigracaoContextType | null>(null);
 
 export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { activeCurrency, primaryCurrency, secondaryCurrency, exchangeRate } = useCurrency();
-
+  const { activeCurrency, exchangeRates, exchangeRate } = useCurrency();
   const [extendedState, setExtendedState] = useState<AppState>(INITIAL_STATE);
-  const [exchangeRates] = useState<any>({ BRL: 1.0, EUR: 6.00, USD: 5.50 });
-  const [googleAccessToken, setGoogleAccessToken] = useState<string>('');
-  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
-  const [isSimulatedConnection, setIsSimulatedConnection] = useState<boolean>(false);
-  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+  const [todoistToken, setTodoistToken] = useState<string>('');
+  const [isTodoistConnected, setIsTodoistConnected] = useState<boolean>(false);
+  const [isTodoistSimulated, setIsTodoistSimulated] = useState<boolean>(false);
+  const [todoistSyncLogs, setTodoistSyncLogs] = useState<string[]>([]);
 
-  const addLog = (msg: string) => {
+  const addTodoistLog = (msg: string) => {
     const time = new Date().toLocaleTimeString('pt-BR');
-    setSyncLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 100));
+    setTodoistSyncLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 100));
   };
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -210,6 +212,7 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     open: false, name: '', category: 'identidade', expiry_date: '', associated_quarter: '', notes: ''
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [isSyncingAI, setIsSyncingAI] = useState(false);
 
   // Carregar todos os dados ao iniciar
   useEffect(() => {
@@ -475,6 +478,200 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function handleAISync() {
+    if (!user) return;
+    
+    const key = localStorage.getItem('openrouter_api_key');
+    const model = localStorage.getItem('openrouter_model') || 'google/gemini-2.5-flash:free';
+    
+    if (!key) {
+      alert("Configuração de API do vTask Agent Requerida!\n\nPara sincronizar a jornada personalizada com Inteligência Artificial, você precisa cadastrar a sua API Key da OpenRouter.\n\nComo cadastrar:\n1. Abra o chatbot vTask Agent no canto inferior direito.\n2. Clique no ícone de engrenagem de configurações.\n3. Insira sua API Key do OpenRouter e salve.\n4. Tente sincronizar novamente!");
+      return;
+    }
+
+    const dest = profile.destination_country || "Espanha";
+    const city = profile.destination_city || "Menasalbas / Toledo";
+    const goal = profile.immigration_goal || "Arraigo Social/Socioformativo";
+    
+    if (!confirm(`O vTask Agent irá gerar uma jornada completa de imigração e planejamento financeiro totalmente customizada para ${dest} (${city}) com foco em ${goal}.\n\nIsso irá substituir os dados atuais de checklists, malas, custos e contatos. Deseja prosseguir?`)) {
+      return;
+    }
+
+    setIsSyncingAI(true);
+    try {
+      const prompt = `Você é o vTask Agent, assistente especialista em imigração. Crie uma jornada de imigração e planejamento de viagem completa, real e altamente específica para o seguinte perfil de imigrante:
+- País de Destino: ${dest}
+- Cidade/Região de Destino: ${city}
+- Objetivo/Visto: ${goal}
+
+Você deve responder ESTREITAMENTE com um objeto JSON puro e válido. Não adicione tags de markdown, blocos de código \`\`\`json ou qualquer texto fora do JSON. O JSON deve seguir a seguinte estrutura de propriedades:
+
+{
+  "timelineTasks": [
+    { "id": "t1", "timeframe": "6_meses", "timeframeLabel": "6 Meses Antes", "title": "...", "description": "...", "completed": false, "priority": "high" }
+  ],
+  "checklists": {
+    "documentos_brasil": [ { "id": "db1", "text": "...", "completed": false, "notes": "", "priority": "high", "cost": 0 } ],
+    "apostila_haia": [ ],
+    "traducao_juramentada": [ ],
+    "bagagem_mao": [ ],
+    "empadronamiento": [ ],
+    "escola": [ ],
+    "regularizacao_2026": [ ]
+  },
+  "packingChecklists": {
+    "malas_roupas": [ { "id": "m1", "text": "...", "completed": false, "notes": "", "priority": "medium", "cost": 0 } ],
+    "eletronicos": [ ],
+    "documentos_valores": [ ],
+    "saude_higiene": [ ],
+    "itens_pessoais": [ ]
+  },
+  "financialExpenses": [
+    { "id": "f1", "description": "Taxas para emissão de novos passaportes (família)", "category": "documentos", "categoryLabel": "Documentos", "estimated": 1000, "real": 0, "paid": false }
+  ],
+  "contacts": [
+    { "name": "...", "purpose": "...", "phone": "...", "email": "...", "website": "...", "sede_electronica": "...", "address": "...", "category": "oficial" }
+  ],
+  "tours": [
+    { "id": "tour1", "day": "Dia 1", "title": "...", "location": "...", "cost": 100, "status": "planejado", "notes": "" }
+  ],
+  "generalNotes": "Regras locais importantes, leis de permanência contínua, dicas sobre clima, transporte e moradia em ${city}."
+}
+
+INSTRUÇÕES DE CONTEÚDO IMPORTANTES:
+1. Gere pelo menos 12 tarefas cronológicas para "timelineTasks" cobrindo prazos desde "6_meses" até a fase de "regularizacao" pós-chegada.
+2. Gere checklists robustos para cada uma das 7 categorias em "checklists" contendo itens reais, nomes oficiais de documentos e trâmites de imigração para o destino, incluindo custos estimados plausíveis em BRL (ex: taxas de cartório, traduções juramentadas, apostilamento de Haia).
+3. Estime despesas reais para "financialExpenses" baseadas na realidade econômica de imigrar para ${dest} (ex: passagens aéreas internacionais reais estimadas em BRL, primeiros alugueis no destino, seguro viagem obrigatório, etc.).
+4. Forneça pelo menos 6 contatos reais locais (hospitais, embaixadas brasileiras no país, câmaras municipais locais, etc.) com telefones, emails e websites legítimos em "contacts".
+5. Forneça pelo menos 4 passeios/lazer recomendados em "tours" para que a família conheça a cidade na chegada.
+6. A propriedade "generalNotes" deve conter um texto explicativo bem detalhado com conselhos úteis sobre custo de vida, moradia, obtenção de vistos e clima local.
+
+Retorne estritamente o JSON pronto para ser parseado.`;
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'vTask Agent Sync'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const resData = await response.json();
+      let text = resData.choices?.[0]?.message?.content || '';
+      
+      // Limpeza caso venha envelopado em markdown
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      const parsed = JSON.parse(text);
+      
+      const newExtended: AppState = {
+        ...extendedState,
+        timelineTasks: parsed.timelineTasks || [],
+        checklists: parsed.checklists || {},
+        packingChecklists: parsed.packingChecklists || {},
+        financialExpenses: parsed.financialExpenses || [],
+        contacts: parsed.contacts || [],
+        tours: parsed.tours || [],
+        generalNotes: parsed.generalNotes || '',
+        destinationCountry: dest,
+        travelYear: '2026'
+      };
+
+      // 1. Atualiza o extendedState imediatamente
+      setExtendedState(newExtended);
+      localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(newExtended));
+
+      // 2. Achata os checklists por trimestre para o estado paralelo (Regularização)
+      const flatChecklists: any[] = [];
+      Object.entries(parsed.checklists || {}).forEach(([catId, items]: any) => {
+        const quarterMap: Record<string, number> = {
+          documentos_brasil: 1, apostila_haia: 2, traducao_juramentada: 3,
+          bagagem_mao: 4, empadronamiento: 5, escola: 6, regularizacao_2026: 7
+        };
+        items.forEach((item: any, idx: number) => {
+          flatChecklists.push({
+            id: `local_ch_ai_${catId}_${idx}`,
+            user_id: user.id,
+            quarter: quarterMap[catId] || 4,
+            title: item.text,
+            description: item.notes || '',
+            category: item.priority === 'high' ? 'URGENTE' : 'DOC',
+            link: '',
+            position: idx,
+            is_completed: item.completed || false
+          });
+        });
+      });
+
+      // Transforma os contatos da IA para o formato do estado paralelo
+      const newContacts = (parsed.contacts || []).map((c: any, idx: number) => ({
+        id: `local_co_ai_${idx}`,
+        user_id: user.id,
+        name: c.name,
+        purpose: c.purpose || '',
+        phone: c.phone || '',
+        email: c.email || '',
+        website: c.website || '',
+        sede_electronica: c.sede_electronica || '',
+        address: c.address || '',
+        category: c.category || 'oficial'
+      }));
+
+      // 3. Atualiza os estados paralelos E limpa o localStorage antigo (fonte de duplicação)
+      setChecklists(flatChecklists);
+      setContacts(newContacts);
+      localStorage.setItem('immigration_checklists_local', JSON.stringify(flatChecklists));
+      localStorage.setItem('immigration_contacts_local', JSON.stringify(newContacts));
+
+      // 4. Salva diretamente no Supabase (sem timeout) para garantir persistência
+      if (profile?.id && profile.id !== 'local') {
+        const { error: saveErr } = await supabase
+          .from('immigration_profiles')
+          .update({ extended_state: newExtended })
+          .eq('id', profile.id);
+        if (saveErr) {
+          console.warn('Erro ao salvar extended_state no Supabase:', saveErr.message);
+        }
+
+        // 5. Tenta sincronizar nas tabelas separadas (opcional — falha silenciosa se não existirem)
+        try {
+          await supabase.from('immigration_checklists').delete().eq('user_id', user.id);
+          if (flatChecklists.length > 0) {
+            await supabase.from('immigration_checklists').insert(
+              flatChecklists.map(({ id: _id, ...rest }: { id: string; [key: string]: any }) => rest)
+            );
+          }
+          await supabase.from('immigration_contacts').delete().eq('user_id', user.id);
+          if (newContacts.length > 0) {
+            await supabase.from('immigration_contacts').insert(
+              newContacts.map(({ id: _id, ...rest }: { id: string; [key: string]: any }) => rest)
+            );
+          }
+        } catch (_) {
+          // Tabelas opcionais — não é crítico
+        }
+      }
+
+      alert(`✅ Jornada Sincronizada!\n\nO vTask Agent gerou sua jornada completa e personalizada para ${dest} (${city}).\n\nNavegue pelas seções para ver checklists, finanças, passeios, contatos e malas customizados!`);
+    } catch (error: any) {
+      console.error('Erro na sincronização IA:', error);
+      alert(`Erro ao sincronizar dados da IA: ${error.message || error}\n\nCertifique-se de que a sua chave da API do OpenRouter e o modelo estão corretos e válidos.`);
+    } finally {
+      setIsSyncingAI(false);
+    }
+  }
+
   // ────────── SINCRONIZAÇÃO EM NUVEM ──────────
   async function updateExtendedState(newState: AppState) {
     if (!user || !profile) return;
@@ -502,237 +699,135 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     }, 800);
   }
 
-  // ────────── GOOGLE CALENDAR ──────────
+  // ────────── TODOIST INTEGRATION ──────────
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data && event.data.type === 'google_oauth_token') {
-        const token = event.data.token;
-        setGoogleAccessToken(token);
-        setIsGoogleConnected(true);
-        setIsSimulatedConnection(false);
-        addLog(`[AUTH] Conectado ao Google. Sincronização ativa.`);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    const savedToken = localStorage.getItem('todoist_api_token');
+    const savedConnected = localStorage.getItem('todoist_connected') === 'true';
+    const savedSimulated = localStorage.getItem('todoist_simulated') === 'true';
+    if (savedToken) setTodoistToken(savedToken);
+    setIsTodoistConnected(savedConnected);
+    setIsTodoistSimulated(savedSimulated);
   }, []);
 
-  const getOrCreateGoogleCalendar = async (): Promise<string | null> => {
-    if (!googleAccessToken) return null;
-    try {
-      addLog(`[API] Verificando lista de calendários...`);
-      const listResponse = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
-        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
-      });
-      if (!listResponse.ok) {
-        addLog(`[ERRO] Falha ao listar calendários: ${listResponse.statusText}`);
-        return null;
-      }
-      const data = await listResponse.json();
-      const existing = data.items?.find((item: any) => item.summary === 'My Travel Docs');
-      if (existing) {
-        addLog(`[API] Calendário "My Travel Docs" encontrado.`);
-        if (extendedState.googleCalendarId !== existing.id) {
-          updateExtendedState({ ...extendedState, googleCalendarId: existing.id });
-        }
-        return existing.id;
-      }
+  const handleConnectTodoistSimulated = () => {
+    setIsTodoistSimulated(true);
+    setIsTodoistConnected(false);
+    localStorage.setItem('todoist_simulated', 'true');
+    localStorage.setItem('todoist_connected', 'false');
+    addTodoistLog(`[AUTH] Conectado ao Todoist em Modo Simulado.`);
+  };
 
-      addLog(`[API] Criando calendário "My Travel Docs" dedicado...`);
-      const createResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
-        method: 'POST',
+  const handleDisconnectTodoist = () => {
+    setIsTodoistConnected(false);
+    setIsTodoistSimulated(false);
+    setTodoistToken('');
+    localStorage.removeItem('todoist_api_token');
+    localStorage.setItem('todoist_connected', 'false');
+    localStorage.setItem('todoist_simulated', 'false');
+    addTodoistLog(`[AUTH] Desconectado da integração do Todoist.`);
+    const updatedEvents = (extendedState.events || []).filter(e => e.sourceType !== 'todoist');
+    updateExtendedState({ ...extendedState, events: updatedEvents });
+  };
+
+  const handleTriggerTodoistSync = async (tokenInput?: string) => {
+    const tokenToUse = tokenInput || todoistToken;
+    if (!tokenToUse && !isTodoistSimulated) {
+      alert("Por favor, insira o seu Todoist API Token.");
+      return;
+    }
+
+    if (isTodoistSimulated) {
+      addTodoistLog(`[SIMULADO] Buscando tarefas do Todoist...`);
+      setTimeout(() => {
+        const today = new Date();
+        const mockTasks = [
+          { id: 'sim_1', title: '🎯 Planejar orçamento mensal', description: 'Revisar custos de aluguel e alimentação', date: new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString().split('T')[0], time: '10:00' },
+          { id: 'sim_2', title: '📞 Ligar para imobiliária', description: 'Confirmar documentos exigidos para contrato', date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2).toISOString().split('T')[0], time: '14:30' },
+          { id: 'sim_3', title: '🎒 Organizar bagagem de mão', description: 'Verificar limites de peso e líquidos', date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5).toISOString().split('T')[0] },
+          { id: 'sim_4', title: '🛒 Comprar itens de viagem', description: 'Adaptador de tomada, cadeados e tags', date: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).toISOString().split('T')[0] },
+        ];
+        
+        const currentEvents = extendedState.events || [];
+        const nonTodoistEvents = currentEvents.filter(e => e.sourceType !== 'todoist');
+        
+        const newEvents = mockTasks.map(t => ({
+          id: `todoist_${t.id}`,
+          title: t.title,
+          description: t.description,
+          date: t.date,
+          time: t.time,
+          notifyOneDayBefore: false,
+          sourceType: 'todoist' as const,
+          sourceId: t.id
+        }));
+
+        updateExtendedState({
+          ...extendedState,
+          events: [...nonTodoistEvents, ...newEvents]
+        });
+        
+        addTodoistLog(`[SIMULADO] Importação concluída! 4 tarefas mapeadas no calendário.`);
+      }, 800);
+      return;
+    }
+
+    addTodoistLog(`[API] Autenticando com a API do Todoist...`);
+    try {
+      const response = await fetch('https://api.todoist.com/rest/v2/tasks', {
         headers: {
-          'Authorization': `Bearer ${googleAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ summary: 'My Travel Docs' })
+          'Authorization': `Bearer ${tokenToUse}`
+        }
       });
-      if (createResponse.ok) {
-        const calData = await createResponse.json();
-        addLog(`[API] Calendário criado com sucesso.`);
-        updateExtendedState({ ...extendedState, googleCalendarId: calData.id });
-        return calData.id;
-      } else {
-        addLog(`[ERRO] Falha ao criar calendário: ${createResponse.statusText}`);
-        return null;
-      }
-    } catch (e: any) {
-      addLog(`[ERRO] Falha de rede ao obter/criar calendário: ${e.message}`);
-      return null;
-    }
-  };
 
-  const syncSingleEventToGoogle = async (event: AppEvent, isDelete = false) => {
-    if (isSimulatedConnection) {
-      if (isDelete) {
-        addLog(`[SIMULADO] Deletando evento no Google Calendar (ID: ${event.googleEventId || 'indefinido'}).`);
-      } else {
-        const simId = event.googleEventId || `sim_ev_${Math.floor(Math.random() * 1000000)}`;
-        addLog(`[SIMULADO] ${event.googleEventId ? 'Atualizando' : 'Criando'} evento "${event.title}" para ${event.date} no Google Calendar.`);
-        if (!event.googleEventId) {
-          updateExtendedState({
-            ...extendedState,
-            events: (extendedState.events || []).map(e => e.id === event.id ? { ...e, googleEventId: simId } : e)
-          });
+      if (!response.ok) {
+        throw new Error(`Erro na API (${response.status}): ${response.statusText}`);
+      }
+
+      const tasks = await response.json();
+      addTodoistLog(`[API] Recebidas ${tasks.length} tarefas do Todoist. Filtrando as com data...`);
+
+      const datedTasks = tasks.filter((t: any) => t.due && t.due.date);
+      addTodoistLog(`[API] Encontradas ${datedTasks.length} tarefas com vencimento.`);
+
+      const currentEvents = extendedState.events || [];
+      const nonTodoistEvents = currentEvents.filter(e => e.sourceType !== 'todoist');
+
+      const mappedEvents = datedTasks.map((t: any) => {
+        let eventTime = undefined;
+        if (t.due.datetime) {
+          try {
+            const dt = new Date(t.due.datetime);
+            eventTime = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          } catch (e) {}
         }
-      }
-      return;
-    }
-
-    if (!isGoogleConnected || !googleAccessToken) return;
-
-    try {
-      let calId: string | null | undefined = extendedState.googleCalendarId;
-      if (!calId) {
-        calId = await getOrCreateGoogleCalendar();
-      }
-      if (!calId) return;
-
-      if (isDelete) {
-        if (!event.googleEventId) return;
-        addLog(`[API] Removendo "${event.title}" do Google Calendar...`);
-        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${event.googleEventId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${googleAccessToken}` }
-        });
-        if (response.ok) {
-          addLog(`[API] Evento "${event.title}" removido com sucesso.`);
-        } else {
-          addLog(`[ERRO] Falha ao deletar evento: ${response.statusText}`);
-        }
-      } else {
-        addLog(`[API] Sincronizando "${event.title}"...`);
-        const start = { date: event.date };
-
-        const startDate = new Date(event.date + 'T00:00:00');
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 1);
-        const end = { date: endDate.toISOString().split('T')[0] };
-
-        const body: any = {
-          summary: event.title,
-          description: event.description || '',
-          start,
-          end,
-          reminders: {
-            useDefault: !event.notifyOneDayBefore,
-            overrides: event.notifyOneDayBefore ? [{ method: 'popup', minutes: 1440 }] : []
-          }
+        return {
+          id: `todoist_${t.id}`,
+          title: `📝 [Todoist] ${t.content}`,
+          description: t.description || 'Tarefa sincronizada do Todoist',
+          date: t.due.date,
+          time: eventTime,
+          notifyOneDayBefore: false,
+          sourceType: 'todoist' as const,
+          sourceId: t.id
         };
-
-        if (event.time) {
-          body.start = { dateTime: `${event.date}T${event.time}:00`, timeZone: 'America/Sao_Paulo' };
-          body.end = { dateTime: `${event.date}T${parseInt(event.time.split(':')[0]) + 1}:00`, timeZone: 'America/Sao_Paulo' };
-          delete body.start.date;
-          delete body.end.date;
-        }
-
-        const url = event.googleEventId
-          ? `https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${event.googleEventId}`
-          : `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`;
-
-        const response = await fetch(url, {
-          method: event.googleEventId ? 'PUT' : 'POST',
-          headers: {
-            'Authorization': `Bearer ${googleAccessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body)
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          addLog(`[API] Evento "${event.title}" sincronizado com sucesso.`);
-          if (!event.googleEventId) {
-            updateExtendedState({
-              ...extendedState,
-              events: (extendedState.events || []).map(e => e.id === event.id ? { ...e, googleEventId: data.id } : e)
-            });
-          }
-        } else {
-          if (response.status === 404 && event.googleEventId) {
-            addLog(`[API] Evento não encontrado no Google (404). Criando novo...`);
-            const createResponse = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${googleAccessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ ...body, googleEventId: undefined })
-            });
-            if (createResponse.ok) {
-              const data = await createResponse.json();
-              addLog(`[API] Evento recriado com sucesso.`);
-              updateExtendedState({
-                ...extendedState,
-                events: (extendedState.events || []).map(e => e.id === event.id ? { ...e, googleEventId: data.id } : e)
-              });
-            }
-          } else {
-            addLog(`[ERRO] Falha ao sincronizar: ${response.statusText}`);
-          }
-        }
-      }
-    } catch (e: any) {
-      addLog(`[ERRO] Falha de rede: ${e.message}`);
-    }
-  };
-
-  const handleTriggerGeneralSync = async () => {
-    if (isSimulatedConnection) {
-      addLog(`[SIMULADO] Sincronizando todos os eventos...`);
-      let count = 0;
-      const updatedEvents = (extendedState.events || []).map(e => {
-        if (!e.googleEventId) {
-          count++;
-          return { ...e, googleEventId: `sim_ev_${Math.floor(Math.random() * 1000000)}` };
-        }
-        return e;
       });
-      updateExtendedState({ ...extendedState, events: updatedEvents });
-      addLog(`[SIMULADO] Sincronização concluída! ${count} novos eventos espelhados.`);
-      return;
+
+      updateExtendedState({
+        ...extendedState,
+        events: [...nonTodoistEvents, ...mappedEvents]
+      });
+
+      localStorage.setItem('todoist_api_token', tokenToUse);
+      localStorage.setItem('todoist_connected', 'true');
+      localStorage.setItem('todoist_simulated', 'false');
+      setTodoistToken(tokenToUse);
+      setIsTodoistConnected(true);
+      setIsTodoistSimulated(false);
+      
+      addTodoistLog(`[API] Sincronização concluída com sucesso! ${mappedEvents.length} tarefas importadas.`);
+    } catch (e: any) {
+      addTodoistLog(`[ERRO] Falha na sincronização: ${e.message}`);
     }
-
-    if (!extendedState.googleClientId) {
-      alert("Por favor, insira o seu Google Client ID nas configurações de Calendário.");
-      return;
-    }
-
-    if (!isGoogleConnected) {
-      addLog(`[AUTH] Abrindo login do Google...`);
-      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${extendedState.googleClientId}&redirect_uri=${window.location.origin}&response_type=token&scope=https://www.googleapis.com/auth/calendar&prompt=consent`;
-      const width = 500;
-      const height = 600;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      window.open(url, 'google_oauth_popup', `width=${width},height=${height},left=${left},top=${top}`);
-      return;
-    }
-
-    addLog(`[API] Sincronizando eventos...`);
-    const calId = await getOrCreateGoogleCalendar();
-    if (!calId) return;
-
-    const currentEvents = extendedState.events || [];
-    for (const ev of currentEvents) {
-      await syncSingleEventToGoogle(ev, false);
-    }
-    addLog(`[API] Sincronização concluída.`);
-  };
-
-  const handleDisconnectGoogle = () => {
-    setIsGoogleConnected(false);
-    setIsSimulatedConnection(false);
-    setGoogleAccessToken('');
-    addLog(`[AUTH] Desconectado da conta do Google.`);
-  };
-
-  const handleConnectSimulated = () => {
-    setIsSimulatedConnection(true);
-    setIsGoogleConnected(false);
-    addLog(`[AUTH] Conectado em Modo Simulado.`);
   };
 
   // ────────── HANDLERS MY-TRAVEL-DOCS ──────────
@@ -849,19 +944,13 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
   const handleAddEvent = (event: AppEvent) => {
     const updatedEvents = [...(extendedState.events || []), event];
     updateExtendedState({ ...extendedState, events: updatedEvents });
-    addLog(`Evento criado: "${event.title}"`);
-    if (extendedState.googleSyncEnabled && (isGoogleConnected || isSimulatedConnection)) {
-      syncSingleEventToGoogle(event, false);
-    }
+    addTodoistLog(`Evento criado: "${event.title}"`);
   };
 
   const handleUpdateEvent = (updated: AppEvent) => {
     const updatedEvents = (extendedState.events || []).map(e => e.id === updated.id ? updated : e);
     updateExtendedState({ ...extendedState, events: updatedEvents });
-    addLog(`Evento atualizado: "${updated.title}"`);
-    if (extendedState.googleSyncEnabled && (isGoogleConnected || isSimulatedConnection)) {
-      syncSingleEventToGoogle(updated, false);
-    }
+    addTodoistLog(`Evento atualizado: "${updated.title}"`);
   };
 
   const handleDeleteEvent = (eventId: string) => {
@@ -869,10 +958,7 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     const updatedEvents = (extendedState.events || []).filter(e => e.id !== eventId);
     updateExtendedState({ ...extendedState, events: updatedEvents });
     if (ev) {
-      addLog(`Evento removido: "${ev.title}"`);
-      if (extendedState.googleSyncEnabled && (isGoogleConnected || isSimulatedConnection)) {
-        syncSingleEventToGoogle(ev, true);
-      }
+      addTodoistLog(`Evento removido: "${ev.title}"`);
     }
   };
 
@@ -1216,11 +1302,12 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
 
   // ────────── LÓGICA DO SIMULADOR FINANCEIRO ──────────
   const formatValue = (valueInPrimary: number) => {
-    if (activeCurrency === 'primary') {
-      return `${primaryCurrency === 'BRL' ? 'R$' : primaryCurrency} ${Math.round(valueInPrimary).toLocaleString('pt-BR')}`;
+    if (activeCurrency === 'BRL') {
+      return `R$ ${Math.round(valueInPrimary).toLocaleString('pt-BR')}`;
     } else {
+      const sym = activeCurrency === 'EUR' ? '€' : '$';
       const valueInSecondary = valueInPrimary / exchangeRate;
-      return `${secondaryCurrency === 'EUR' ? '€' : secondaryCurrency} ${valueInSecondary.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      return `${sym} ${valueInSecondary.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     }
   };
 
@@ -1345,8 +1432,8 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     user,
     exchangeRate,
     activeCurrency,
-    primaryCurrency,
-    secondaryCurrency,
+    primaryCurrency: 'BRL',
+    secondaryCurrency: activeCurrency !== 'BRL' ? activeCurrency : 'EUR',
     profile,
     extendedState,
     checklists,
@@ -1370,9 +1457,11 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     contactModal,
     docModal,
     isUploading,
-    isGoogleConnected,
-    isSimulatedConnection,
-    syncLogs,
+    todoistToken,
+    setTodoistToken,
+    isTodoistConnected,
+    isTodoistSimulated,
+    todoistSyncLogs,
     totalTasks,
     completedTasks,
     completionPercentage,
@@ -1389,6 +1478,8 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     loadAllData,
     updateExtendedState,
     handleSyncIdeias,
+    isSyncingAI,
+    handleAISync,
     handleFamilyMembersChange,
     handleChecklistsChange,
     handlePackingChecklistsChange,
@@ -1400,9 +1491,9 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     handleAddEvent,
     handleUpdateEvent,
     handleDeleteEvent,
-    handleTriggerGeneralSync,
-    handleDisconnectGoogle,
-    handleConnectSimulated,
+    handleTriggerTodoistSync,
+    handleDisconnectTodoist,
+    handleConnectTodoistSimulated,
     updateProfileField,
     toggleChecklistTask,
     saveTask,

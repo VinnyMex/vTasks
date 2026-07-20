@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", "SF Pro Display", "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -33,9 +35,9 @@
 
   /* Tipografia */
   --text:             #1D1D1F;
-  --text-secondary:   #424245;
-  --text-muted:       #86868B;
-  --text-faint:       #AEAEB2;
+  --text-secondary:   #2C2C2E;
+  --text-muted:       #4A4A4F;
+  --text-faint:       #636366;
 
   /* Acento ÚNICO — azul elétrico */
   --accent:           #0A84FF;
@@ -118,9 +120,9 @@ html.dark {
 
   /* Tipografia */
   --text:             #F5F5F7;
-  --text-secondary:   #D1D1D6;
-  --text-muted:       #8E8E93;
-  --text-faint:       #636366;
+  --text-secondary:   #E5E5EA;
+  --text-muted:       #CCCCCC;
+  --text-faint:       #A1A1A6;
 
   /* Acento — azul elétrico brilhante */
   --accent:           #0A84FF;
@@ -379,4 +381,42 @@ a, button {
 ::selection {
   background: var(--accent-muted);
   color: var(--text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ESCALA DE FONTES & LEGIBILIDADE (Melhoria de Acessibilidade)
+   ═══════════════════════════════════════════════════════════════════════ */
+body {
+  font-size: 16px; /* Base legível de 16px */
+}
+
+/* Redefinição de fontes muito pequenas do Tailwind para evitar textos ilegíveis */
+.text-\[8px\] {
+  font-size: 10px !important;
+}
+.text-\[9px\] {
+  font-size: 11px !important;
+}
+.text-\[10px\] {
+  font-size: 12px !important;
+}
+.text-xs {
+  font-size: 0.8125rem !important; /* ~13px */
+}
+.text-sm {
+  font-size: 0.9375rem !important; /* ~15px */
+}
+.text-base {
+  font-size: 1.0625rem !important; /* ~17px */
+}
+
+/* Forçar cores de acessibilidade e alto contraste para classes cinzas do Tailwind */
+.text-zinc-400, .text-gray-400, .text-neutral-400, .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+.text-zinc-500, .text-gray-500, .text-neutral-500, .text-slate-500 {
+  color: var(--text-secondary) !important;
+}
+.text-zinc-300, .text-gray-300, .text-neutral-300, .text-slate-300 {
+  color: var(--text-faint) !important;
 }

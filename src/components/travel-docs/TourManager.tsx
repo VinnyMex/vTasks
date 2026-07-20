@@ -185,7 +185,7 @@ export default function TourManager({ tours = [], onChangeTours, currency, curre
 
           <div className="flex items-center gap-2 no-print">
             <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Progresso dos Passeios:</span>
-            <span className="text-sm font-extrabold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full font-mono">{progressPercent}% Concluído</span>
+            <span className="text-sm font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full font-mono">{progressPercent}% Concluído</span>
           </div>
         </div>
 
@@ -203,15 +203,15 @@ export default function TourManager({ tours = [], onChangeTours, currency, curre
             <span className="text-[10px] uppercase font-bold text-zinc-400 block">Total de Atividades</span>
             <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">{totalCount} passeios</span>
           </div>
-          <div className="p-3 bg-blue-50/40 rounded-xl border border-blue-100/30">
-            <span className="text-[10px] uppercase font-bold text-blue-500 block">Investimento Estimado</span>
-            <span className="text-sm font-extrabold text-blue-700">
+          <div className="p-3 bg-blue-50/40 dark:bg-blue-950/20 rounded-xl border border-blue-100/30 dark:border-blue-900/30">
+            <span className="text-[10px] uppercase font-bold text-blue-500 dark:text-blue-400 block">Investimento Estimado</span>
+            <span className="text-sm font-extrabold text-blue-700 dark:text-blue-300">
               {currencySymbol} {Math.round(totalCostBRL / exchangeRate).toLocaleString('pt-BR')}
             </span>
           </div>
-          <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-100/30">
-            <span className="text-[10px] uppercase font-bold text-emerald-600 block">Pago / Liquidado</span>
-            <span className="text-sm font-extrabold text-emerald-700">
+          <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-100/30 dark:border-emerald-900/30">
+            <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Pago / Liquidado</span>
+            <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">
               {currencySymbol} {Math.round(paidCostBRL / exchangeRate).toLocaleString('pt-BR')}
             </span>
           </div>

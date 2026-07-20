@@ -24,6 +24,8 @@ export default function PackingManager({ checklists = {}, onChangeChecklists, cu
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
   const [showTips, setShowTips] = useState<boolean>(true);
 
+  const effectiveRate = currency === 'BRL' ? 1 : exchangeRate;
+
   const dest = destinationCountry?.trim() || 'Destino';
   const y = travelYear?.trim() || 'Ano da Viagem';
 
@@ -102,7 +104,7 @@ export default function PackingManager({ checklists = {}, onChangeChecklists, cu
       completed: false,
       notes: '',
       priority: newItemPriority,
-      cost: parsedCostInput * exchangeRate
+      cost: parsedCostInput * effectiveRate
     };
 
     onChangeChecklists(activeCategory, [...currentItems, newItem]);
@@ -222,13 +224,13 @@ export default function PackingManager({ checklists = {}, onChangeChecklists, cu
           <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl">
             <span className="text-[10px] uppercase font-bold text-zinc-400 block">Custo nesta Seção ({categories.find(c => c.id === activeCategory)?.name})</span>
             <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">
-              {currencySymbol} {Math.round(currentCategoryCostsBRL / exchangeRate).toLocaleString('pt-BR')}
+              {currencySymbol} {Math.round(currentCategoryCostsBRL / effectiveRate).toLocaleString('pt-BR')}
             </span>
           </div>
-          <div className="p-3 bg-blue-50/40 rounded-xl border border-blue-100/30">
-            <span className="text-[10px] uppercase font-bold text-blue-500 block">Custo Total de Equipamentos/Itens Adquiridos</span>
-            <span className="text-sm font-extrabold text-blue-700">
-              {currencySymbol} {Math.round(globalChecklistCostsBRL / exchangeRate).toLocaleString('pt-BR')}
+          <div className="p-3 bg-blue-50/40 dark:bg-blue-950/20 rounded-xl border border-blue-100/30 dark:border-blue-900/30">
+            <span className="text-[10px] uppercase font-bold text-blue-500 dark:text-blue-400 block">Custo Total de Equipamentos/Itens Adquiridos</span>
+            <span className="text-sm font-extrabold text-blue-700 dark:text-blue-300">
+              {currencySymbol} {Math.round(globalChecklistCostsBRL / effectiveRate).toLocaleString('pt-BR')}
             </span>
           </div>
         </div>
@@ -404,7 +406,7 @@ export default function PackingManager({ checklists = {}, onChangeChecklists, cu
                         {/* Cost Badge */}
                         {item.cost ? (
                           <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold text-[10px] px-2 py-0.5 rounded-md font-mono border border-emerald-100 dark:border-emerald-900/30">
-                            {currencySymbol} {Math.round(item.cost / exchangeRate).toLocaleString('pt-BR')}
+                            {currencySymbol} {Math.round(item.cost / effectiveRate).toLocaleString('pt-BR')}
                           </span>
                         ) : null}
 
@@ -470,10 +472,10 @@ export default function PackingManager({ checklists = {}, onChangeChecklists, cu
                           <span className="absolute left-3 top-1/2 -tranzinc-y-1/2 text-zinc-400 font-semibold font-mono text-xs">{currencySymbol}</span>
                           <input
                             type="number"
-                            value={item.cost ? Math.round(item.cost / exchangeRate) : ''}
+                            value={item.cost ? Math.round(item.cost / effectiveRate) : ''}
                             onChange={(e) => {
                               const typed = parseFloat(e.target.value) || 0;
-                              handleUpdateCost(item.id, typed * exchangeRate);
+                              handleUpdateCost(item.id, typed * effectiveRate);
                             }}
                             placeholder="Ex: 150"
                             className="w-full bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-zinc-900 transition-all text-zinc-800 dark:text-zinc-200"

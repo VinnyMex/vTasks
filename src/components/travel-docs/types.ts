@@ -81,7 +81,7 @@ export interface AppEvent {
   time?: string; // Formato HH:MM
   notifyOneDayBefore: boolean;
   googleEventId?: string;
-  sourceType?: 'custom' | 'passport_expiry' | 'birthday' | 'tour';
+  sourceType?: 'custom' | 'passport_expiry' | 'birthday' | 'tour' | 'todoist';
   sourceId?: string;
 }
 
@@ -101,4 +101,6 @@ export interface AppState {
   googleClientId?: string;
   googleCalendarId?: string;
   googleSyncEnabled?: boolean;
+  exchangeRates?: { EUR: number; USD: number };
+  contacts?: any[];
 }

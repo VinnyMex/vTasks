@@ -7,10 +7,10 @@ import CalendarView from '@/components/travel-docs/CalendarView';
 
 function CalendarioContent() {
   const {
-    extendedState, updateExtendedState,
+    extendedState,
     handleAddEvent, handleUpdateEvent, handleDeleteEvent,
-    handleTriggerGeneralSync, handleDisconnectGoogle, handleConnectSimulated,
-    syncLogs, isGoogleConnected, isSimulatedConnection,
+    handleTriggerTodoistSync, handleDisconnectTodoist, handleConnectTodoistSimulated,
+    todoistToken, setTodoistToken, isTodoistConnected, isTodoistSimulated, todoistSyncLogs
   } = useImigracao();
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -19,17 +19,14 @@ function CalendarioContent() {
         onAddEvent={handleAddEvent}
         onUpdateEvent={handleUpdateEvent}
         onDeleteEvent={handleDeleteEvent}
-        googleClientId={extendedState.googleClientId || ''}
-        onChangeClientId={(id) => updateExtendedState({ ...extendedState, googleClientId: id })}
-        googleSyncEnabled={extendedState.googleSyncEnabled || false}
-        onToggleSync={(enabled) => updateExtendedState({ ...extendedState, googleSyncEnabled: enabled })}
-        googleCalendarId={extendedState.googleCalendarId || ''}
-        onTriggerSync={handleTriggerGeneralSync}
-        onDisconnectGoogle={handleDisconnectGoogle}
-        syncLogs={syncLogs}
-        isGoogleConnected={isGoogleConnected}
-        isSimulatedConnection={isSimulatedConnection}
-        onConnectSimulated={handleConnectSimulated}
+        todoistToken={todoistToken}
+        onChangeTodoistToken={setTodoistToken}
+        onTriggerTodoistSync={handleTriggerTodoistSync}
+        onDisconnectTodoist={handleDisconnectTodoist}
+        todoistSyncLogs={todoistSyncLogs}
+        isTodoistConnected={isTodoistConnected}
+        isTodoistSimulated={isTodoistSimulated}
+        onConnectTodoistSimulated={handleConnectTodoistSimulated}
       />
     </div>
   );

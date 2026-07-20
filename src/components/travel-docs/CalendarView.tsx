@@ -7,17 +7,14 @@ interface CalendarViewProps {
   onAddEvent: (event: AppEvent) => void;
   onUpdateEvent: (event: AppEvent) => void;
   onDeleteEvent: (eventId: string) => void;
-  googleClientId: string;
-  onChangeClientId: (id: string) => void;
-  googleSyncEnabled: boolean;
-  onToggleSync: (enabled: boolean) => void;
-  googleCalendarId: string;
-  onTriggerSync: () => void;
-  onDisconnectGoogle: () => void;
-  syncLogs: string[];
-  isGoogleConnected: boolean;
-  isSimulatedConnection: boolean;
-  onConnectSimulated: () => void;
+  todoistToken: string;
+  onChangeTodoistToken: (token: string) => void;
+  onTriggerTodoistSync: (token?: string) => void;
+  onDisconnectTodoist: () => void;
+  todoistSyncLogs: string[];
+  isTodoistConnected: boolean;
+  isTodoistSimulated: boolean;
+  onConnectTodoistSimulated: () => void;
 }
 
 export default function CalendarView({
@@ -25,17 +22,14 @@ export default function CalendarView({
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
-  googleClientId,
-  onChangeClientId,
-  googleSyncEnabled,
-  onToggleSync,
-  googleCalendarId,
-  onTriggerSync,
-  onDisconnectGoogle,
-  syncLogs,
-  isGoogleConnected,
-  isSimulatedConnection,
-  onConnectSimulated
+  todoistToken,
+  onChangeTodoistToken,
+  onTriggerTodoistSync,
+  onDisconnectTodoist,
+  todoistSyncLogs,
+  isTodoistConnected,
+  isTodoistSimulated,
+  onConnectTodoistSimulated
 }: CalendarViewProps) {
   // Calendar View states — initialized to real local today (timezone-safe)
   const [currentDate, setCurrentDate] = useState<Date>(() => {
@@ -122,6 +116,12 @@ export default function CalendarView({
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
+  const handleGoToToday = () => {
+    const today = new Date();
+    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+    setSelectedDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+  };
+
   // Get events on selected date
   const eventsForSelectedDate = events.filter(e => e.date === selectedDateStr).sort((a, b) => {
     const timeA = a.time || '23:59';
@@ -199,23 +199,23 @@ export default function CalendarView({
       {/* Overview & Integrations top row */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Google Calendar Connection Settings */}
+        {/* Todoist Connection Settings */}
         <div className="lg:col-span-6 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
           <div className="space-y-3.5">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <h3 className="text-sm font-bold flex items-center gap-1.5" style={{ color: "var(--text)" }}>
-                <Link className="w-4 h-4 text-blue-500" />
-                <span>Integração Google Calendar</span>
+                <Check className="w-4 h-4 text-orange-500" />
+                <span>Integração Todoist</span>
               </h3>
               
               {/* Connection Status badge */}
-              {isGoogleConnected ? (
+              {isTodoistConnected ? (
                 <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
                   <Check className="w-3 h-3 stroke-[3]" /> Conectado Real
                 </span>
-              ) : isSimulatedConnection ? (
-                <span className="text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
-                  <Play className="w-2.5 h-2.5 fill-blue-500 text-blue-500" /> Simulado
+              ) : isTodoistSimulated ? (
+                <span className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <Play className="w-2.5 h-2.5 fill-orange-500 text-orange-500" /> Simulado
                 </span>
               ) : (
                 <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md">
@@ -225,17 +225,17 @@ export default function CalendarView({
             </div>
 
             <p className="text-[11px] text-zinc-400 leading-normal">
-              Sincronize todas as datas importantes (vencimento de passaportes, aniversários e passeios) em um calendário próprio chamado **"My Travel Docs"** na sua conta do Google.
+              Sincronize suas tarefas e compromissos do Todoist em tempo real direto na sua agenda pessoal.
             </p>
 
             <div className="space-y-2">
               <div>
-                <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Google Client ID (Configuração)</label>
+                <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Todoist API Token</label>
                 <input
-                  type="text"
-                  value={googleClientId}
-                  onChange={(e) => onChangeClientId(e.target.value)}
-                  placeholder="Insira seu Google Client ID do Cloud Console..."
+                  type="password"
+                  value={todoistToken}
+                  onChange={(e) => onChangeTodoistToken(e.target.value)}
+                  placeholder="Insira seu Todoist API Token das configurações..."
                   className="w-full bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   style={{ minHeight: '38px' }}
                 />
@@ -244,34 +244,34 @@ export default function CalendarView({
           </div>
 
           <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 mt-4 flex flex-wrap gap-2">
-            {!isGoogleConnected && !isSimulatedConnection ? (
+            {!isTodoistConnected && !isTodoistSimulated ? (
               <>
                 <button
                   type="button"
-                  onClick={onConnectSimulated}
+                  onClick={onConnectTodoistSimulated}
                   className="flex-1 bg-zinc-100 dark:bg-white dark:bg-zinc-900/5 hover:bg-zinc-200 dark:hover:bg-white dark:bg-zinc-900/10 text-zinc-700 dark:text-zinc-300 font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
                   style={{ minHeight: '38px' }}
                 >
-                  <Play className="w-3.5 h-3.5 text-blue-500" />
+                  <Play className="w-3.5 h-3.5 text-orange-500" />
                   <span>Modo Simulado</span>
                 </button>
                 <button
                   type="button"
-                  onClick={onTriggerSync}
-                  disabled={!googleClientId}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                  onClick={() => onTriggerTodoistSync(todoistToken)}
+                  disabled={!todoistToken}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
                   style={{ minHeight: '38px' }}
                 >
                   <Link className="w-3.5 h-3.5" />
-                  <span>Conectar Google</span>
+                  <span>Conectar Todoist</span>
                 </button>
               </>
             ) : (
               <>
                 <button
                   type="button"
-                  onClick={onTriggerSync}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                  onClick={() => onTriggerTodoistSync(todoistToken)}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
                   style={{ minHeight: '38px' }}
                 >
                   <Play className="w-3.5 h-3.5" />
@@ -279,10 +279,10 @@ export default function CalendarView({
                 </button>
                 <button
                   type="button"
-                  onClick={onDisconnectGoogle}
+                  onClick={onDisconnectTodoist}
                   className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 p-2 rounded-xl cursor-pointer transition-all flex items-center justify-center"
                   style={{ minWidth: '38px', minHeight: '38px' }}
-                  title="Desconectar do Google"
+                  title="Desconectar do Todoist"
                 >
                   <Link2Off className="w-4 h-4" />
                 </button>
@@ -294,16 +294,17 @@ export default function CalendarView({
         {/* Console Log Panel */}
         <div className="lg:col-span-6 bg-zinc-950 p-4 rounded-2xl border border-zinc-900 shadow-xs flex flex-col">
           <div className="flex items-center gap-1.5 pb-2 border-b border-zinc-900 mb-2">
-            <Terminal className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Sync Console Logs (Simulador/API)</span>
+            <Terminal className="w-4 h-4 text-orange-400 animate-pulse" />
+            <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider">Sync Console Logs (Todoist/API)</span>
           </div>
           <div className="flex-1 font-mono text-[9px] text-zinc-300 overflow-y-auto no-scrollbar space-y-1 max-h-[148px]" style={{ minHeight: '148px' }}>
-            {syncLogs.length === 0 ? (
-              <span className="text-zinc-500 dark:text-zinc-400 italic block">Nenhuma atividade de sincronização registrada. Conecte ou sincronize para iniciar logs...</span>
-            ) : (
-              syncLogs.map((log, idx) => (
-                <div key={idx} className="leading-relaxed whitespace-pre-wrap">{log}</div>
-              ))
+            {todoistSyncLogs.map((log, idx) => (
+              <div key={idx} className="leading-relaxed break-all">
+                {log}
+              </div>
+            ))}
+            {todoistSyncLogs.length === 0 && (
+              <span className="text-zinc-550 italic">Nenhuma atividade de sincronização registrada. Conecte ou sincronize para iniciar logs...</span>
             )}
           </div>
         </div>
@@ -323,6 +324,14 @@ export default function CalendarView({
               <span>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
             </h3>
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleGoToToday}
+                className="px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-850 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg cursor-pointer text-[10px] font-bold uppercase tracking-wider transition-colors"
+                style={{ minHeight: '32px' }}
+              >
+                Hoje
+              </button>
               <button
                 type="button"
                 onClick={handlePrevMonth}
@@ -393,6 +402,7 @@ export default function CalendarView({
                       if (e.sourceType === 'passport_expiry') dotColor = 'bg-red-500';
                       else if (e.sourceType === 'birthday') dotColor = 'bg-purple-500';
                       else if (e.sourceType === 'tour') dotColor = 'bg-emerald-500';
+                      else if (e.sourceType === 'todoist') dotColor = 'bg-orange-500';
 
                       return (
                         <span 
@@ -448,6 +458,8 @@ export default function CalendarView({
                           ? 'bg-purple-500'
                           : ev.sourceType === 'tour'
                           ? 'bg-emerald-500'
+                          : ev.sourceType === 'todoist'
+                          ? 'bg-orange-500'
                           : 'bg-blue-500'
                       }`} />
 
@@ -478,12 +490,14 @@ export default function CalendarView({
                         {/* Type Label */}
                         <span className="inline-block text-[8px] uppercase tracking-wider font-bold text-zinc-400 mt-1">
                           {ev.sourceType === 'passport_expiry' 
-                            ? 'Validade Passaporte' 
+                            ? 'Compromisso Importante' 
                             : ev.sourceType === 'birthday'
-                            ? 'Aniversário'
+                            ? 'Lembrete Pessoal'
                             : ev.sourceType === 'tour'
-                            ? 'Passeio / Roteiro'
-                            : 'Personalizado'}
+                            ? 'Tarefa / Afazer'
+                            : ev.sourceType === 'todoist'
+                            ? 'Todoist Sync'
+                            : 'Geral'}
                         </span>
                       </div>
 
@@ -523,24 +537,13 @@ export default function CalendarView({
                 </div>
               </div>
 
-              {/* Toggle to activate real-time sync */}
-              {(isGoogleConnected || isSimulatedConnection) && (
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850 flex items-center justify-between no-print mt-2">
+              {/* Sync Info Banner */}
+              {(isTodoistConnected || isTodoistSimulated) && (
+                <div className="bg-orange-50/50 dark:bg-orange-950/10 p-3 rounded-xl border border-orange-100 dark:border-orange-900/30 flex items-center justify-between no-print mt-2">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 block">Sincronização em Tempo Real</span>
-                    <span className="text-[9px] text-zinc-400 block leading-tight">Envia alterações ao Google Calendar instantaneamente.</span>
+                    <span className="text-[10px] font-bold text-orange-700 dark:text-orange-400 block">Integração Ativa</span>
+                    <span className="text-[9px] text-zinc-450 dark:text-zinc-400 block leading-tight">Tarefas importadas com sucesso na sua agenda.</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onToggleSync(!googleSyncEnabled)}
-                    className={`w-10 h-6 rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                      googleSyncEnabled ? 'bg-emerald-500' : 'bg-zinc-300'
-                    }`}
-                  >
-                    <span className={`w-5 h-5 bg-white dark:bg-zinc-900 rounded-full shadow-md block transform transition-transform duration-200 ${
-                      googleSyncEnabled ? 'tranzinc-x-4' : 'tranzinc-x-0'
-                    }`} />
-                  </button>
                 </div>
               )}
             </div>
@@ -624,7 +627,7 @@ export default function CalendarView({
                       className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 select-none cursor-pointer flex items-center gap-1"
                     >
                       <Bell className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Notificar 1 dia antes (lembrete de 24h no Google Calendar)</span>
+                      <span>Notificar 1 dia antes (Lembrete ativo no sistema)</span>
                     </label>
                   </div>
                 </div>
