@@ -145,7 +145,7 @@ export default function HousingForm({ housing, onChangeHousing, currency, curren
                 <span className="absolute left-3 top-1/2 -tranzinc-y-1/2 text-zinc-400 text-xs font-semibold">{currencySymbol}</span>
                 <input
                   type="text"
-                  value={housing.rentValue ? Math.round(parseFloat(housing.rentValue) / exchangeRate || 0).toString() : ''}
+                  value={housing.rentValue ? (() => { const v = Math.round((parseFloat(housing.rentValue) / exchangeRate || 0) * 100) / 100; return v % 1 === 0 ? v.toFixed(0) : v.toString(); })() : ''}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value) || 0;
                     handleChange('rentValue', (val * exchangeRate).toString());
@@ -162,7 +162,7 @@ export default function HousingForm({ housing, onChangeHousing, currency, curren
                 <span className="absolute left-3 top-1/2 -tranzinc-y-1/2 text-zinc-400 text-xs font-semibold">{currencySymbol}</span>
                 <input
                   type="text"
-                  value={housing.depositValue ? Math.round(parseFloat(housing.depositValue) / exchangeRate || 0).toString() : ''}
+                  value={housing.depositValue ? (() => { const v = Math.round((parseFloat(housing.depositValue) / exchangeRate || 0) * 100) / 100; return v % 1 === 0 ? v.toFixed(0) : v.toString(); })() : ''}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value) || 0;
                     handleChange('depositValue', (val * exchangeRate).toString());

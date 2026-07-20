@@ -139,14 +139,17 @@ export default function FinancialPlanner({
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(converted);
   };
 
   const getDisplayValue = (valInBRL: number) => {
     const converted = valInBRL / exchangeRate;
-    return converted === 0 ? '' : Math.round(converted).toString();
+    if (converted === 0) return '';
+    // Preserva até 2 casas decimais sem trailing zeros
+    const rounded = Math.round(converted * 100) / 100;
+    return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toString();
   };
 
   const financeTips = [
@@ -299,9 +302,10 @@ export default function FinancialPlanner({
               <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Estimado ({currency})</label>
               <input
                 type="number"
+                step="0.01"
                 value={newEst}
                 onChange={(e) => setNewEst(e.target.value)}
-                placeholder="Ex: 500"
+                placeholder="Ex: 500,50"
                 className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-800 dark:text-zinc-200"
                 style={{ minHeight: '40px' }}
               />
@@ -380,6 +384,7 @@ export default function FinancialPlanner({
                       <span className="text-zinc-400 font-mono text-[10px]">{currencySymbol}</span>
                       <input
                         type="number"
+                        step="0.01"
                         value={getDisplayValue(expense.estimated)}
                         onChange={(e) => handleUpdateCost(expense.id, 'estimated', parseFloat(e.target.value) || 0)}
                         className="w-20 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 focus:bg-white dark:bg-zinc-900 border-0 hover:border focus:border border-zinc-200 dark:border-zinc-800 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-semibold"
@@ -394,12 +399,13 @@ export default function FinancialPlanner({
                       <span className="text-zinc-400 font-mono text-[10px]">{currencySymbol}</span>
                       <input
                         type="number"
+                        step="0.01"
                         value={getDisplayValue(expense.real)}
                         onChange={(e) => handleUpdateCost(expense.id, 'real', parseFloat(e.target.value) || 0)}
                         className={`w-20 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 focus:bg-white dark:bg-zinc-900 border-0 hover:border focus:border border-zinc-200 dark:border-zinc-800 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-bold ${
                           expense.real > 0 ? 'text-emerald-700' : 'text-zinc-400'
                         }`}
-                        placeholder="Ex: 450"
+                        placeholder="Ex: 450,50"
                       />
                     </div>
                   </td>
