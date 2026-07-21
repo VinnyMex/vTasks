@@ -43,9 +43,6 @@ function ChecklistsContent() {
         <ChecklistManager
           checklists={extendedState.checklists || {}}
           onChangeChecklists={handleChecklistsChange}
-          currency={activeCurrency}
-          currencySymbol={CURRENCY_SYMBOLS[activeCurrency]}
-          exchangeRate={currentExchangeRate}
           destinationCountry={profile.destination_country}
           travelYear="2026"
         />

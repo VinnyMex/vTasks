@@ -172,9 +172,20 @@ export default function FamilyForm({ familyMembers, onChangeFamilyMembers, desti
                       value={member.birthDate || ''}
                       onChange={(e) => updateMember(member.id, 'birthDate', e.target.value)}
                       className="input text-sm" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)" }}
-                      
                     />
                   </div>
+                  {member.birthDate && (() => {
+                    const today = new Date();
+                    const birth = new Date(member.birthDate);
+                    let age = today.getFullYear() - birth.getFullYear();
+                    const notYet = today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+                    if (notYet) age--;
+                    return age >= 0 ? (
+                      <span className="text-[11px] font-semibold mt-1 block" style={{ color: "var(--text-muted)" }}>
+                        {age === 0 ? 'Menos de 1 ano' : `${age} ${age === 1 ? 'ano' : 'anos'}`}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Passaporte Número */}

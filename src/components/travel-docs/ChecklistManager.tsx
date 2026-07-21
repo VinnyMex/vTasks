@@ -7,24 +7,18 @@ import { interpolateText } from './data';
 interface ChecklistManagerProps {
   checklists: { [key: string]: ChecklistItem[] };
   onChangeChecklists: (categoryId: string, items: ChecklistItem[]) => void;
-  currency: 'BRL' | 'EUR' | 'USD';
-  currencySymbol: string;
-  exchangeRate: number;
   destinationCountry: string;
   travelYear: string;
 }
 
-export default function ChecklistManager({ checklists, onChangeChecklists, currency, currencySymbol, exchangeRate, destinationCountry, travelYear }: ChecklistManagerProps) {
+export default function ChecklistManager({ checklists, onChangeChecklists, destinationCountry, travelYear }: ChecklistManagerProps) {
   const [activeCategory, setActiveCategory] = useState<string>('documentos_brasil');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [newItemText, setNewItemText] = useState<string>('');
   const [newItemPriority, setNewItemPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [newItemCost, setNewItemCost] = useState<string>('');
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
   const [showTips, setShowTips] = useState<boolean>(true);
-
-  const effectiveRate = currency === 'BRL' ? 1 : exchangeRate;
 
   // Hover states
   const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
@@ -67,17 +61,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
     onChangeChecklists(activeCategory, updated);
   };
 
-  const handleUpdateCost = (itemId: string, costInBRL: number) => {
-    const currentItems = checklists[activeCategory] || [];
-    const updated = currentItems.map(item => {
-      if (item.id === itemId) {
-        return { ...item, cost: costInBRL };
-      }
-      return item;
-    });
-    onChangeChecklists(activeCategory, updated);
-  };
-
   const handleUpdateText = (itemId: string, text: string) => {
     const currentItems = checklists[activeCategory] || [];
     const updated = currentItems.map(item => {
@@ -105,20 +88,17 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
     if (!newItemText.trim()) return;
 
     const currentItems = checklists[activeCategory] || [];
-    const parsedCostInput = parseFloat(newItemCost) || 0;
     const newItem: ChecklistItem = {
       id: `item_${Date.now()}`,
       text: newItemText,
       completed: false,
       notes: '',
       priority: newItemPriority,
-      cost: parsedCostInput * effectiveRate
     };
 
     onChangeChecklists(activeCategory, [...currentItems, newItem]);
     setNewItemText('');
     setNewItemPriority('medium');
-    setNewItemCost('');
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -163,9 +143,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
   const toggleExpandNotes = (id: string) => {
     setExpandedNotesId(expandedNotesId === id ? null : id);
   };
-
-  const currentCategoryCostsBRL = currentItems.reduce((sum, i) => sum + (i.cost || 0), 0);
-  const globalChecklistCostsBRL = Object.values(checklists).flat().reduce((sum, i) => sum + (i.cost || 0), 0);
 
   const documentTips = [
     { title: "Apostila de Haia", text: `Para que seus documentos tenham validade legal em ${dest}, eles devem receber o selo da Apostila de Haia em cartórios credenciados na origem.` },
@@ -223,20 +200,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
           <span>{allCategoryMetrics.total} no total</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: "var(--border)" }}>
-          <div className="p-3 rounded-xl" style={{ background: "var(--surface-2)" }}>
-            <span className="text-[10px] uppercase font-bold block" style={{ color: "var(--text-muted)" }}>Custo nesta Categoria ({categories.find(c => c.id === activeCategory)?.name})</span>
-            <span className="text-sm font-extrabold" style={{ color: "var(--text)" }}>
-              {currencySymbol} {Math.round(currentCategoryCostsBRL / effectiveRate).toLocaleString('pt-BR')}
-            </span>
-          </div>
-          <div className="p-3 rounded-xl" style={{ background: "var(--bg-done)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--border)" }}>
-            <span className="text-[10px] uppercase font-bold block" style={{ color: "var(--accent)" }}>Custo Total de Todos os Documentos</span>
-            <span className="text-sm font-extrabold" style={{ color: "var(--accent)" }}>
-              {currencySymbol} {Math.round(globalChecklistCostsBRL / effectiveRate).toLocaleString('pt-BR')}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Main Checklist UI */}
@@ -440,11 +403,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
                         item.completed ? 'line-through' : ''
                       }`} style={{ color: item.completed ? "var(--text-muted)" : "var(--text)" }}>
                         <span>{interpolateText(item.text, destinationCountry, travelYear)}</span>
-                        {item.cost && item.cost > 0 ? (
-                          <span className="inline-flex items-center gap-1 font-semibold text-[10px] px-2 py-0.5 rounded-md font-mono" style={{ background: "var(--bg-done)", color: "var(--color-done)", border: '1px solid var(--color-done)' }}>
-                            {currencySymbol} {Math.round(item.cost / effectiveRate).toLocaleString('pt-BR')}
-                          </span>
-                        ) : null}
                       </p>
 
                       {/* Badges row */}
@@ -521,25 +479,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
                         </select>
                       </div>
 
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Custo Estimado deste Documento ({currency}):</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -tranzinc-y-1/2 font-semibold font-mono text-xs" style={{ color: "var(--text-muted)" }}>{currencySymbol}</span>
-                          <input
-                            type="number"
-                            value={item.cost ? Math.round(item.cost / effectiveRate) : ''}
-                            onChange={(e) => {
-                              const typed = parseFloat(e.target.value) || 0;
-                              // Store internally as base BRL
-                              handleUpdateCost(item.id, typed * effectiveRate);
-                            }}
-                            placeholder="Ex: 150"
-                            className="w-full rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                            style={{ minHeight: '38px', background: "var(--surface-2)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--border)", color: "var(--text)" }}
-                          />
-                        </div>
-                      </div>
-
                       <div className="flex flex-col gap-1.5 md:col-span-2">
                         <label className="text-[10px] font-bold" style={{ color: "var(--text-muted)" }}>Minhas anotações para este documento:</label>
                         <textarea
@@ -575,7 +514,7 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
 
           {/* Form to add custom checklist items to the active category */}
           <form onSubmit={handleAddItem} className="mt-6 pt-4 grid grid-cols-1 md:grid-cols-12 gap-3 no-print" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: "var(--border)" }}>
-            <div className="md:col-span-5">
+            <div className="md:col-span-8">
               <label className="block text-[10px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>Adicionar Item Personalizado nesta categoria</label>
               <input
                 type="text"
@@ -599,20 +538,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, curre
                 <option value="medium">Média Prioridade</option>
                 <option value="low">Baixa Prioridade</option>
               </select>
-            </div>
-            <div className="md:col-span-3">
-              <label className="block text-[10px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>Custo Estimado ({currency})</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -tranzinc-y-1/2 font-semibold font-mono text-xs" style={{ color: "var(--text-muted)" }}>{currencySymbol}</span>
-                <input
-                  type="number"
-                  value={newItemCost}
-                  onChange={(e) => setNewItemCost(e.target.value)}
-                  placeholder="Ex: 150"
-                  className="w-full rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                  style={{ minHeight: '40px', background: "var(--surface-2)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--border)" }}
-                />
-              </div>
             </div>
             <div className="md:col-span-1 flex items-end">
               <button

@@ -33,21 +33,20 @@ export default function FinancialPlanner({
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [newDesc, setNewDesc] = useState('');
   const [newCategory, setNewCategory] = useState<FinancialExpense['category']>('documentos');
-  const [newEst, setNewEst] = useState('');
   const [showTips, setShowTips] = useState<boolean>(true);
+  // Valor em digitação (string) por id de despesa — evita perder zeros finais
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
 
   const startEditExpense = (expense: FinancialExpense) => {
     setEditingExpenseId(expense.id);
     setNewDesc(expense.description);
     setNewCategory(expense.category);
-    setNewEst(getDisplayValue(expense.estimated));
   };
 
   const cancelEditExpense = () => {
     setEditingExpenseId(null);
     setNewDesc('');
     setNewCategory('documentos');
-    setNewEst('');
   };
 
   const handleAddExpense = (e: React.FormEvent) => {
@@ -62,8 +61,6 @@ export default function FinancialPlanner({
       outros: 'Outros Custos'
     };
 
-    const parsedEst = parseFloat(newEst) || 0;
-
     if (editingExpenseId) {
       const updated = expenses.map(exp => {
         if (exp.id === editingExpenseId) {
@@ -72,7 +69,6 @@ export default function FinancialPlanner({
             description: newDesc.trim(),
             category: newCategory,
             categoryLabel: categoryLabels[newCategory],
-            estimated: parsedEst * exchangeRate
           };
         }
         return exp;
@@ -85,14 +81,13 @@ export default function FinancialPlanner({
         description: newDesc.trim(),
         category: newCategory,
         categoryLabel: categoryLabels[newCategory],
-        estimated: parsedEst * exchangeRate,
+        estimated: 0,
         real: 0,
         paid: false
       };
 
       onChangeExpenses([...expenses, newItem]);
       setNewDesc('');
-      setNewEst('');
     }
   };
 
@@ -128,10 +123,9 @@ export default function FinancialPlanner({
   };
 
   // Calculations (internal storage is always in BRL)
-  const totalEstimatedBRL = expenses.reduce((sum, e) => sum + e.estimated, 0);
-  const totalRealBRL = expenses.reduce((sum, e) => sum + e.real, 0);
-  const totalPaidBRL = expenses.reduce((sum, e) => sum + (e.paid ? (e.real || e.estimated) : 0), 0);
-  const totalPendingBRL = Math.max(0, totalEstimatedBRL - totalPaidBRL);
+  // "real" só conta quando marcado como pago
+  const totalRealBRL = expenses.reduce((sum, e) => sum + (e.paid ? e.real : 0), 0);
+  const totalPendingBRL = expenses.reduce((sum, e) => sum + (!e.paid ? e.real : 0), 0);
 
   // Conversion helpers
   const formatValue = (valueInBRL: number) => {
@@ -147,9 +141,9 @@ export default function FinancialPlanner({
   const getDisplayValue = (valInBRL: number) => {
     const converted = valInBRL / exchangeRate;
     if (converted === 0) return '';
-    // Preserva até 2 casas decimais sem trailing zeros
     const rounded = Math.round(converted * 100) / 100;
-    return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toString();
+    // Sempre mostra 2 casas decimais quando há centavos, ex: 19,50 e não 19,5
+    return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(2).replace('.', ',');
   };
 
   const financeTips = [
@@ -243,29 +237,21 @@ export default function FinancialPlanner({
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <div className="p-3 bg-blue-50/50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900/50">
-            <span className="block text-[11px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">Total Estimado ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-blue-900 dark:text-blue-200 block mt-0.5">{formatValue(totalEstimatedBRL)}</span>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
-            <span className="block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Realizado ({currency})</span>
+            <span className="block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Realizado / Pago ({currency})</span>
             <span className="text-base sm:text-lg font-bold text-emerald-900 dark:text-emerald-200 block mt-0.5">{formatValue(totalRealBRL)}</span>
           </div>
-          <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
-            <span className="block text-[11px] font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Pago ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-indigo-900 dark:text-indigo-200 block mt-0.5">{formatValue(totalPaidBRL)}</span>
-          </div>
           <div className="p-3 bg-zinc-100 dark:bg-zinc-800/70 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Pendente / Poupar ({currency})</span>
+            <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Estimado / Pendente ({currency})</span>
             <span className="text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-200 block mt-0.5">{formatValue(totalPendingBRL)}</span>
           </div>
         </div>
 
         {/* Add custom expense form */}
-        <form onSubmit={handleAddExpense} className={`grid grid-cols-1 md:grid-cols-4 gap-3 p-4 rounded-xl mb-6 no-print transition-all ${
-          editingExpenseId 
-            ? 'bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 shadow-xs' 
+        <form onSubmit={handleAddExpense} className={`grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl mb-6 no-print transition-all ${
+          editingExpenseId
+            ? 'bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 shadow-xs'
             : 'bg-zinc-50 dark:bg-zinc-900/40'
         }`}>
           <div className="md:col-span-2">
@@ -282,33 +268,21 @@ export default function FinancialPlanner({
               style={{ minHeight: '40px' }}
             />
           </div>
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Categoria</label>
-            <select
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value as any)}
-              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-800 dark:text-zinc-200"
-              style={{ minHeight: '40px' }}
-            >
-              <option value="documentos">Documentos</option>
-              <option value="passagens">Passagens</option>
-              <option value="moradia">Moradia</option>
-              <option value="reserva">Reserva</option>
-              <option value="outros">Outros</option>
-            </select>
-          </div>
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Estimado ({currency})</label>
-              <input
-                type="number"
-                step="0.01"
-                value={newEst}
-                onChange={(e) => setNewEst(e.target.value)}
-                placeholder="Ex: 500,50"
-                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-800 dark:text-zinc-200"
+              <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">Categoria</label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value as any)}
+                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-800 dark:text-zinc-200"
                 style={{ minHeight: '40px' }}
-              />
+              >
+                <option value="documentos">Documentos</option>
+                <option value="passagens">Passagens</option>
+                <option value="moradia">Moradia</option>
+                <option value="reserva">Reserva</option>
+                <option value="outros">Outros</option>
+              </select>
             </div>
             <div className="flex items-center gap-1.5">
               {editingExpenseId && (
@@ -341,8 +315,7 @@ export default function FinancialPlanner({
               <tr className="border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                 <th className="py-2.5 px-3">Pago</th>
                 <th className="py-2.5 px-3">Descrição / Categoria</th>
-                <th className="py-2.5 px-3">Estimado ({currency})</th>
-                <th className="py-2.5 px-3">Realizado ({currency})</th>
+                <th className="py-2.5 px-3">Estimado / Realizado ({currency})</th>
                 <th className="py-2.5 px-3 text-right no-print">Remover</th>
               </tr>
             </thead>
@@ -378,35 +351,40 @@ export default function FinancialPlanner({
                     </span>
                   </td>
 
-                  {/* Estimated cost input */}
+                  {/* Real/Estimated cost input */}
                   <td className="py-3 px-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-zinc-400 font-mono text-[10px]">{currencySymbol}</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={getDisplayValue(expense.estimated)}
-                        onChange={(e) => handleUpdateCost(expense.id, 'estimated', parseFloat(e.target.value) || 0)}
-                        className="w-20 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 focus:bg-white dark:bg-zinc-900 border-0 hover:border focus:border border-zinc-200 dark:border-zinc-800 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-semibold"
-                        placeholder="0"
-                      />
-                    </div>
-                  </td>
-
-                  {/* Real cost input */}
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-zinc-400 font-mono text-[10px]">{currencySymbol}</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={getDisplayValue(expense.real)}
-                        onChange={(e) => handleUpdateCost(expense.id, 'real', parseFloat(e.target.value) || 0)}
-                        className={`w-20 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 focus:bg-white dark:bg-zinc-900 border-0 hover:border focus:border border-zinc-200 dark:border-zinc-800 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-bold ${
-                          expense.real > 0 ? 'text-emerald-700' : 'text-zinc-400'
-                        }`}
-                        placeholder="Ex: 450,50"
-                      />
+                    <div className="flex flex-col gap-0.5">
+                      <span className={`text-[9px] font-bold uppercase tracking-wide ${expense.paid ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                        {expense.paid ? 'Realizado' : 'Estimado'}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-zinc-400 font-mono text-[10px]">{currencySymbol}</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={draftValues[expense.id] ?? getDisplayValue(expense.real)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            // Aceita dígitos com vírgula ou ponto, até 2 casas decimais
+                            if (/^[\d]*[,.]?[\d]{0,2}$/.test(val) || val === '') {
+                              setDraftValues(prev => ({ ...prev, [expense.id]: val }));
+                            }
+                          }}
+                          onFocus={(e) => {
+                            setDraftValues(prev => ({ ...prev, [expense.id]: getDisplayValue(expense.real) }));
+                            e.target.select();
+                          }}
+                          onBlur={(e) => {
+                            const parsed = parseFloat(e.target.value.replace(',', '.')) || 0;
+                            handleUpdateCost(expense.id, 'real', parsed);
+                            setDraftValues(prev => { const next = { ...prev }; delete next[expense.id]; return next; });
+                          }}
+                          className={`w-20 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 focus:bg-white dark:bg-zinc-900 border-0 hover:border focus:border border-zinc-200 dark:border-zinc-800 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 font-bold ${
+                            expense.paid ? 'text-emerald-700' : 'text-zinc-500'
+                          }`}
+                          placeholder="0,00"
+                        />
+                      </div>
                     </div>
                   </td>
 
