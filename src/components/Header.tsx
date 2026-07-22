@@ -76,17 +76,15 @@ export function Header() {
       <div className="flex items-center gap-3">
         <div className="w-9 md:hidden" />
 
-        {/* Logo mobile */}
-        <div className="md:hidden flex items-center gap-2">
+        {/* Logo mobile (Apenas a logo) */}
+        <div className="md:hidden flex items-center">
           <Image
             src={theme === "dark" ? "/vtasks-dark.png" : "/vtasks-light.png"}
             alt="vTasks"
-            width={26}
-            height={26}
+            width={30}
+            height={30}
+            className="object-contain"
           />
-          <span className="font-black text-sm" style={{ color: "var(--text)" }}>
-            vTasks<span style={{ color: "var(--accent)" }}>Pro</span>
-          </span>
         </div>
 
         <p className="hidden md:block text-[11px] font-bold uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>

@@ -11,7 +11,7 @@ interface TimelineRoadmapProps {
 }
 
 export default function TimelineRoadmap({ tasks, onToggleTask, onChangeTasks, destinationCountry, travelYear }: TimelineRoadmapProps) {
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   // Form states

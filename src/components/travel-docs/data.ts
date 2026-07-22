@@ -1,4 +1,4 @@
-import { FamilyMember, ChecklistCategory, FinancialExpense, TimelineTask, HousingDetails, AppState } from './types';
+import { FamilyMember, ChecklistCategory, FinancialExpense, TimelineTask, HousingDetails, AppState, TourActivity, AppEvent } from './types';
 
 export const DEFAULT_FAMILY_MEMBERS: FamilyMember[] = [
   {
@@ -191,24 +191,353 @@ export const DEFAULT_PACKING_CHECKLISTS: { [key: string]: any[] } = {
   ]
 };
 
+export const VACATION_TOURS_2026: TourActivity[] = [
+  {
+    id: 'tour_ferias_1',
+    day: 'Dia 1 (07/12/2026)',
+    date: '2026-12-07',
+    time: '14:00',
+    title: 'Chegada em Toledo & Passeio pelo Centro Histórico',
+    location: 'Toledo',
+    cost: 0,
+    status: 'planejado',
+    notes: 'Chegada e check-in na hospedagem base em Toledo. Reconhecimento da cidade histórica.'
+  },
+  {
+    id: 'tour_ferias_2',
+    day: 'Dia 2 (08/12/2026)',
+    date: '2026-12-08',
+    time: '10:00',
+    title: 'Palácio Real de Madrid',
+    location: 'Madrid',
+    cost: 173.6, // €28.00 * 6.20
+    status: 'planejado',
+    notes: 'Palácio Real de Madrid: € 28,00 (€ 14,00 por adulto; criança de 5 anos grátis).'
+  },
+  {
+    id: 'tour_ferias_3',
+    day: 'Dia 3 (09/12/2026)',
+    date: '2026-12-09',
+    time: '10:00',
+    title: 'Museu do Prado',
+    location: 'Madrid',
+    cost: 186.0, // €30.00 * 6.20
+    status: 'planejado',
+    notes: 'Museu do Prado (Madrid): € 30,00 (€ 15,00 por adulto; criança de 5 anos grátis).'
+  },
+  {
+    id: 'tour_ferias_4',
+    day: 'Dia 3 (09/12/2026)',
+    date: '2026-12-09',
+    time: '15:00',
+    title: 'Estádio Santiago Bernabéu / Tour Real Madrid',
+    location: 'Madrid',
+    cost: 434.0, // €70.00 * 6.20
+    status: 'planejado',
+    notes: 'Tour Santiago Bernabéu: € 70,00 (€ 35,00 por adulto; criança isenta no pacote básico).'
+  },
+  {
+    id: 'tour_ferias_5',
+    day: 'Dia 4 (10/12/2026)',
+    date: '2026-12-10',
+    time: '11:00',
+    title: 'Basílica da Sagrada Família',
+    location: 'Barcelona',
+    cost: 322.4, // €52.00 * 6.20
+    status: 'planejado',
+    notes: 'Bate e volta Madrid ↔ Barcelona em trem Ouigo/Avlo. Sagrada Família c/ audioguia: € 52,00 (€ 26,00 por adulto; criança grátis).'
+  },
+  {
+    id: 'tour_ferias_6',
+    day: 'Dia 5 (11/12/2026)',
+    date: '2026-12-11',
+    time: '10:00',
+    title: 'Park Güell',
+    location: 'Barcelona',
+    cost: 124.0, // €20.00 * 6.20
+    status: 'planejado',
+    notes: 'Park Güell (Barcelona): € 20,00 (€ 10,00 por adulto; criança grátis).'
+  },
+  {
+    id: 'tour_ferias_7',
+    day: 'Dia 6 (12/12/2026)',
+    date: '2026-12-12',
+    time: '11:00',
+    title: 'Gastronomia & Passeio Livre em Toledo (Menú del Día)',
+    location: 'Toledo',
+    cost: 434.0, // €70.00 * 6.20
+    status: 'planejado',
+    notes: 'Dia de descanso e gastronomia local em Toledo com menus do dia (€ 70,00/família).'
+  },
+  {
+    id: 'tour_ferias_8',
+    day: 'Dia 7 (13/12/2026)',
+    date: '2026-12-13',
+    time: '16:00',
+    title: 'Encerramento das Férias & Logística de Retorno',
+    location: 'Toledo / Madrid',
+    cost: 0,
+    status: 'planejado',
+    notes: 'Organização de bagagens e finalização das férias de 7 dias.'
+  },
+  {
+    id: 'tour_ferias_transporte_1',
+    day: 'Logística Avant',
+    date: '2026-12-07',
+    time: '08:00',
+    title: 'Trem Alta Velocidade Toledo ↔ Madrid (Avant)',
+    location: 'Toledo / Madrid',
+    cost: 930.0, // €150.00 * 6.20
+    status: 'planejado',
+    notes: 'Pacote de bilhetes diários ida/volta Toledo ↔ Madrid (€ 150,00 total).'
+  },
+  {
+    id: 'tour_ferias_transporte_2',
+    day: 'Logística Barcelona',
+    date: '2026-12-10',
+    time: '07:00',
+    title: 'Trem Alta Velocidade Madrid ↔ Barcelona (Ouigo/Avlo)',
+    location: 'Madrid / Barcelona',
+    cost: 1116.0, // €180.00 * 6.20
+    status: 'planejado',
+    notes: 'Bate e volta comprado com antecedência na operadora econômica Ouigo ou Avlo (€ 180,00 total).'
+  },
+  {
+    id: 'tour_ferias_transporte_3',
+    day: 'Logística Urbana',
+    date: '2026-12-07',
+    time: '09:00',
+    title: 'Metrô e Ônibus Locais (Cartões Multi 10)',
+    location: 'Madri / Barcelona',
+    cost: 186.0, // €30.00 * 6.20
+    status: 'planejado',
+    notes: 'Cartões Multi 10 viagens de metrô/ônibus (€ 30,00 total).'
+  }
+];
+
+export const VACATION_EVENTS_2026: AppEvent[] = [
+  {
+    id: 'ev_ferias_1',
+    title: '🛫 Início das Férias de 7 Dias na Espanha (07/12 a 13/12)',
+    description: 'Chegada e check-in na base em Toledo. Passeio pelo centro histórico.',
+    date: '2026-12-07',
+    time: '09:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_2',
+    title: '👑 Visita ao Palácio Real de Madrid',
+    description: 'Palácio Real de Madrid (10:00). Ingressos: € 28,00 (2 adultos; criança grátis). Trem Avant Toledo ↔ Madrid.',
+    date: '2026-12-08',
+    time: '10:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_3',
+    title: '🎨 Museu do Prado (10h) & ⚽ Tour Santiago Bernabéu (15h)',
+    description: 'Manhã no Museu do Prado (€ 30,00) e tarde no Estádio Santiago Bernabéu do Real Madrid (€ 70,00).',
+    date: '2026-12-09',
+    time: '10:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_4',
+    title: '🚄 Bate e Volta Barcelona & ⛪ Sagrada Família (11h)',
+    description: 'Trem de alta velocidade Madrid ↔ Barcelona (Ouigo/Avlo: € 180,00). Visita com audioguia à Sagrada Família (€ 52,00).',
+    date: '2026-12-10',
+    time: '07:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_5',
+    title: '🌳 Park Güell em Barcelona (10h) & Retorno a Toledo',
+    description: 'Visita ao Park Güell (€ 20,00) pela manhã e viagem de regresso à base em Toledo.',
+    date: '2026-12-11',
+    time: '10:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_6',
+    title: '🏰 Dia Livre em Toledo (Gastronomia & Menú del Día)',
+    description: 'Dia para curtir a cidade histórica de Toledo, menus do dia (€ 70,00/família) e compras no supermercado.',
+    date: '2026-12-12',
+    time: '11:00',
+    notifyOneDayBefore: false,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_7',
+    title: '🧳 Encerramento do Roteiro de Férias',
+    description: 'Último dia das férias de 7 dias. Organização de bagagens e logística final de retorno.',
+    date: '2026-12-13',
+    time: '16:00',
+    notifyOneDayBefore: false,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_dica_trem',
+    title: '💡 Dica: Comprar Trens Promocionais Madrid ↔ Barcelona (Ouigo/Avlo)',
+    description: 'Comprar passagens de trem promocionais (Ouigo/Avlo) com 2 a 3 meses de antecedência para garantir o custo de € 180,00.',
+    date: '2026-10-01',
+    time: '09:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  },
+  {
+    id: 'ev_ferias_imigracao',
+    title: '⚠️ Requisito Legal Imigração (Comprovação Financeira)',
+    description: 'Comprovação legal exigida na imigração: € 1.065,60 por pessoa (total € 3.196,80 para os 3 viajantes em extratos/cartões).',
+    date: '2026-12-07',
+    time: '08:00',
+    notifyOneDayBefore: true,
+    sourceType: 'custom'
+  }
+];
+
+export const VACATION_FINANCIAL_EXPENSES: FinancialExpense[] = [
+  {
+    id: 'fe_ferias_atracoes',
+    description: 'Atrações Principais Férias (Palácio Real, Prado, Bernabéu, Sagrada Família, Park Güell)',
+    category: 'outros',
+    categoryLabel: 'Passeios e Lazer',
+    estimated: 1240, // € 200 * 6.20
+    real: 0,
+    paid: false,
+    notes: 'Valor total para 2 adultos + 1 criança de 5 anos (isenta nas atrações).'
+  },
+  {
+    id: 'fe_ferias_alimentacao',
+    description: 'Alimentação Básica 7 Dias de Férias (€ 70,00/dia para a família)',
+    category: 'outros',
+    categoryLabel: 'Alimentação Férias',
+    estimated: 3038, // € 490 * 6.20
+    real: 0,
+    paid: false,
+    notes: 'Menus del día, lanches rápidos e supermercado para a criança.'
+  },
+  {
+    id: 'fe_ferias_transporte',
+    description: 'Transporte Total Férias (Trem Avant Toledo/Madrid + Ouigo/Avlo Barcelona + Metrô Multi 10)',
+    category: 'outros',
+    categoryLabel: 'Transporte Férias',
+    estimated: 2232, // € 360 * 6.20
+    real: 0,
+    paid: false,
+    notes: 'Trens Toledo ↔ Madrid (€150), Trem Madrid ↔ Barcelona (€180) e Metrô/Ônibus (€30).'
+  }
+];
+
+export const VACATION_GENERAL_NOTES = `### 🇪🇸 Roteiro Completo de Férias na Espanha (07/12/2026 a 13/12/2026)
+**Família:** 2 Adultos + 1 Criança de 5 anos
+**Base de Hospedagem:** Toledo (Com deslocamentos diários de trem Avant)
+
+---
+
+#### 🏛️ 1. Atrações Principais (Madri e Barcelona) — Subtotal: € 200,00
+- **Palácio Real de Madrid:** € 28,00 (€ 14,00 por adulto; criança grátis).
+- **Museu do Prado (Madrid):** € 30,00 (€ 15,00 por adulto; criança grátis).
+- **Sagrada Família (Barcelona):** € 52,00 (€ 26,00 por adulto c/ audioguia; criança grátis).
+- **Park Güell (Barcelona):** € 20,00 (€ 10,00 por adulto; criança grátis).
+- **Estádio Santiago Bernabéu / Tour Real Madrid:** € 70,00 (€ 35,00 por adulto; criança isenta no básico).
+
+#### 🍔 2. Alimentação Básica (7 dias) — Subtotal: € 490,00
+- **Custo Diário Estimado:** € 70,00 (Menus del día, lanches rápidos e supermercado).
+
+#### 🚄 3. Transporte Total (Logística + Eventos) — Subtotal: € 360,00
+- **Trem de Alta Velocidade (Toledo ↔ Madrid):** € 150,00 (Avant - bilhetes diários ida/volta).
+- **Trem de Alta Velocidade (Madrid ↔ Barcelona):** € 180,00 (Bate e volta no Ouigo ou Avlo).
+- **Metrô/Ônibus Locais (Cartões Multi 10):** € 30,00.
+
+---
+
+### 📊 Resumo do Orçamento na Espanha
+- **Atrações:** € 200,00
+- **Alimentação:** € 490,00
+- **Transporte:** € 360,00
+- **TOTAL ESTIMADO:** € 1.050,00
+
+---
+
+### ⚠️ Regra Legal Importante para Imigração
+Embora o gasto planejado seja de ~€ 1.050,00, a legislação exige comprovação de capacidade financeira mínima de **€ 1.065,60 por pessoa** no desembarque.
+👉 Total a comprovar no controle de fronteira para os 3 viajantes: **€ 3.196,80** (em extratos bancários, cartões ou espécie).
+
+---
+
+### 💡 Dicas de Compra de Passagens de Trem Promocionais (Madrid ↔ Barcelona)
+1. **Compre com Antecedência (2 a 3 meses antes):** Operadoras de baixo custo como **Ouigo** (ouigo.com/es) e **Avlo** (renfe.com/avlo) lançam passagens a partir de € 9,00 a € 19,00 por trecho.
+2. **Aplicativos recomendados:** Baixe o app do **Ouigo Spain**, **Renfe/Avlo** ou **Trainline** para acompanhar promoções relâmpago.
+3. **Descontos para Crianças:** Menores de 14 anos têm tarifa fixa de € 5,00 no Ouigo e no Avlo crianças até 3-5 anos viajam de graça no colo ou com tarifa super reduzida.`;
+
 export const INITIAL_STATE: AppState = {
   familyMembers: DEFAULT_FAMILY_MEMBERS,
   checklists: DEFAULT_CHECKLISTS,
-  financialExpenses: DEFAULT_FINANCIAL_EXPENSES,
+  financialExpenses: [...DEFAULT_FINANCIAL_EXPENSES, ...VACATION_FINANCIAL_EXPENSES],
   timelineTasks: DEFAULT_TIMELINE_TASKS,
   housing: DEFAULT_HOUSING,
-  generalNotes: '',
+  generalNotes: VACATION_GENERAL_NOTES,
   currency: 'BRL',
   packingChecklists: DEFAULT_PACKING_CHECKLISTS,
-  destinationCountry: '',
-  travelYear: '',
-  tours: [],
-  events: [],
+  destinationCountry: 'Espanha',
+  travelYear: '2026',
+  tours: VACATION_TOURS_2026,
+  events: VACATION_EVENTS_2026,
   googleClientId: '',
   googleCalendarId: '',
   googleSyncEnabled: false,
-  exchangeRates: { EUR: 6.20, USD: 5.50 }
+  exchangeRates: { EUR: 6.20, USD: 5.50 },
+  openrouterApiKey: '',
+  openrouterModel: 'google/gemini-2.5-flash:free'
 };
+
+export function ensureVacationScheduleInState(state: AppState): AppState {
+  const currentTours = state.tours || [];
+  const existingTourIds = new Set(currentTours.map(t => t.id));
+  const newTours = [...currentTours];
+  for (const tour of VACATION_TOURS_2026) {
+    if (!existingTourIds.has(tour.id)) {
+      newTours.push(tour);
+    }
+  }
+
+  const currentEvents = state.events || [];
+  const existingEventIds = new Set(currentEvents.map(e => e.id));
+  const newEvents = [...currentEvents];
+  for (const ev of VACATION_EVENTS_2026) {
+    if (!existingEventIds.has(ev.id)) {
+      newEvents.push(ev);
+    }
+  }
+
+  const currentExpenses = state.financialExpenses || [];
+  const existingExpenseIds = new Set(currentExpenses.map(e => e.id));
+  const newExpenses = [...currentExpenses];
+  for (const exp of VACATION_FINANCIAL_EXPENSES) {
+    if (!existingExpenseIds.has(exp.id)) {
+      newExpenses.push(exp);
+    }
+  }
+
+  let notes = state.generalNotes || '';
+  if (!notes.includes('Roteiro Completo de Férias na Espanha')) {
+    notes = notes ? `${notes}\n\n${VACATION_GENERAL_NOTES}` : VACATION_GENERAL_NOTES;
+  }
+
+  return {
+    ...state,
+    destinationCountry: state.destinationCountry || 'Espanha',
+    travelYear: state.travelYear || '2026',
+    tours: newTours,
+    events: newEvents,
+    financialExpenses: newExpenses,
+    generalNotes: notes
+  };
+}
 
 export function interpolateText(text: string, country?: string, year?: string): string {
   const dest = country?.trim() || 'o país de destino';
@@ -217,3 +546,4 @@ export function interpolateText(text: string, country?: string, year?: string): 
     .replace(/{destino}/g, dest)
     .replace(/{ano}/g, y);
 }
+

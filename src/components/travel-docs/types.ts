@@ -103,4 +103,7 @@ export interface AppState {
   googleSyncEnabled?: boolean;
   exchangeRates?: { EUR: number; USD: number };
   contacts?: any[];
+  openrouterApiKey?: string;
+  openrouterModel?: string;
+  chatSessions?: any[];
 }

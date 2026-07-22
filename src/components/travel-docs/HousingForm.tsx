@@ -13,7 +13,7 @@ interface HousingFormProps {
 }
 
 export default function HousingForm({ housing, onChangeHousing, currency, currencySymbol, exchangeRate, destinationCountry, travelYear }: HousingFormProps) {
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
 
   const housingTips = [
     { 

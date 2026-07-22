@@ -33,7 +33,7 @@ export default function FinancialPlanner({
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [newDesc, setNewDesc] = useState('');
   const [newCategory, setNewCategory] = useState<FinancialExpense['category']>('documentos');
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
   // Valor em digitação (string) por id de despesa — evita perder zeros finais
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
 

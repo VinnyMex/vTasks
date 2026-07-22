@@ -22,7 +22,7 @@ export default function PackingManager({ checklists = {}, onChangeChecklists, cu
   const [newItemPriority, setNewItemPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [newItemCost, setNewItemCost] = useState<string>('');
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
 
   const effectiveRate = currency === 'BRL' ? 1 : exchangeRate;
 

@@ -6,7 +6,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { useCurrency } from '@/components/CurrencyProvider';
 import { uploadTravelDoc, deleteTravelDoc, getTravelDocUrl } from '@/lib/travel-docs';
 import { AppState, FamilyMember, FinancialExpense, HousingDetails, AppEvent } from '@/components/travel-docs/types';
-import { INITIAL_STATE, DEFAULT_PACKING_CHECKLISTS } from '@/components/travel-docs/data';
+import { INITIAL_STATE, DEFAULT_CHECKLISTS, DEFAULT_PACKING_CHECKLISTS, ensureVacationScheduleInState } from '@/components/travel-docs/data';
 
 // ────────── DADOS INICIAIS ──────────
 
@@ -147,6 +147,10 @@ interface ImigracaoContextType {
   handleLoadScenario: (sc: any) => void;
   formatValue: (valueInPrimary: number) => string;
   userName: () => string;
+  updateOpenRouterConfig: (apiKey: string, model: string) => void;
+  syncStatus: 'saved' | 'saving' | 'error';
+  lastSyncTime: string;
+  reorderOrMoveTask: (taskId: string, targetQuarter: number, newPosition?: number, isCompleted?: boolean) => Promise<void>;
 }
 
 const INITIAL_FORM_DATA = {
@@ -172,6 +176,8 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { activeCurrency, exchangeRates, exchangeRate } = useCurrency();
   const [extendedState, setExtendedState] = useState<AppState>(INITIAL_STATE);
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('pt-BR'));
   const [todoistToken, setTodoistToken] = useState<string>('');
   const [isTodoistConnected, setIsTodoistConnected] = useState<boolean>(false);
   const [isTodoistSimulated, setIsTodoistSimulated] = useState<boolean>(false);
@@ -191,6 +197,8 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     immigration_goal: 'Arraigo Social/Socioformativo',
     current_quarter: 1
   });
+  const profileRef = useRef<any>(null);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
   const [checklists, setChecklists] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
@@ -214,9 +222,12 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncingAI, setIsSyncingAI] = useState(false);
 
-  // Carregar todos os dados ao iniciar
+  // Carregar todos os dados ao iniciar — só uma vez por user_id
+  const loadedUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!user) return;
+    if (loadedUserIdRef.current === user.id) return; // já carregou para este user
+    loadedUserIdRef.current = user.id;
     loadAllData();
   }, [user]);
 
@@ -236,12 +247,20 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
         },
         (payload: any) => {
           const newProfile = payload.new;
-          if (newProfile) {
-            setProfile(newProfile);
-            if (newProfile.extended_state && JSON.stringify(newProfile.extended_state) !== JSON.stringify(extendedState)) {
-              setExtendedState(newProfile.extended_state);
-            }
-          }
+          if (!newProfile?.extended_state) return;
+          // Usa ref para comparar sem depender do closure — evita loop e dados stale
+          const current = extendedStateRef.current;
+          if (JSON.stringify(newProfile.extended_state) === JSON.stringify(current)) return;
+          // Só aplica se o evento vier de outra aba/dispositivo (updated_at mais recente)
+          // e nunca sobrescreve checklists com dados sem itens
+          const remoteExt = newProfile.extended_state;
+          const hasChecklistData = remoteExt.checklists && Object.keys(remoteExt.checklists).length > 0 &&
+            Object.values(remoteExt.checklists).some((arr: any) => Array.isArray(arr) && arr.length > 0);
+          setProfile(newProfile);
+          setExtendedState(prev => ({
+            ...remoteExt,
+            checklists: hasChecklistData ? remoteExt.checklists : (prev.checklists || remoteExt.checklists)
+          }));
         }
       )
       .subscribe();
@@ -249,7 +268,8 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, profile?.id, extendedState]);
+  // Removido extendedState das deps — usamos extendedStateRef para evitar recriar o channel a cada mudança de estado
+  }, [user, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAllData() {
     if (!user) return;
@@ -258,25 +278,27 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
       // 1. Carrega ou cria perfil
       let profileData = null;
       try {
-        let { data, error: profileErr } = await supabase
+        let { data: profiles, error: profileErr } = await supabase
           .from('immigration_profiles')
           .select('*')
           .eq('user_id', user.id)
-          .maybeSingle();
+          .order('updated_at', { ascending: false });
 
         if (profileErr) throw profileErr;
-        profileData = data;
 
-        if (!profileData) {
+        if (profiles && profiles.length > 0) {
+          profileData = profiles[0];
+        } else {
+          // Usa upsert para nunca criar duplicatas
           const { data: newProfile, error: createErr } = await supabase
             .from('immigration_profiles')
-            .insert({
+            .upsert({
               user_id: user.id,
               destination_country: 'Espanha',
               destination_city: 'Menasalbas / Toledo',
               immigration_goal: 'Arraigo Social/Socioformativo',
               current_quarter: 1
-            })
+            }, { onConflict: 'user_id' })
             .select()
             .single();
 
@@ -296,24 +318,90 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
       }
       setProfile(profileData);
 
-      // Carregar extended_state com fallback robusto
+      // Carregar extended_state com fallback robusto e auto-upload para o Supabase
       let extState = INITIAL_STATE;
       try {
-        if (profileData && profileData.id !== 'local' && 'extended_state' in profileData && profileData.extended_state && Object.keys(profileData.extended_state).length > 0) {
-          extState = profileData.extended_state;
-        } else {
+        // Sempre lê o localStorage como base de fallback para checklists
+        let localState: AppState | null = null;
+        try {
           const saved = localStorage.getItem('checklist_espanha_app_state_v1');
-          if (saved) {
-            extState = JSON.parse(saved);
+          if (saved) localState = JSON.parse(saved);
+        } catch {}
+
+        if (profileData && 'extended_state' in profileData && profileData.extended_state && Object.keys(profileData.extended_state).length > 0) {
+          const remoteChecklists = profileData.extended_state.checklists;
+          const localChecklists = localState?.checklists;
+
+          // Usa checklists do Supabase se tiver itens marcados; caso contrário usa localStorage
+          // Isso evita que um extended_state sem checklists (ou com checklists vazias) apague as marcações
+          const hasRemoteChecklistData = remoteChecklists && Object.keys(remoteChecklists).length > 0 &&
+            Object.values(remoteChecklists).some((arr: any) => Array.isArray(arr) && arr.length > 0);
+
+          const checklistsToUse = hasRemoteChecklistData
+            ? { ...INITIAL_STATE.checklists, ...remoteChecklists }
+            : { ...INITIAL_STATE.checklists, ...(localChecklists || {}) };
+
+          extState = {
+            ...INITIAL_STATE,
+            ...profileData.extended_state,
+            checklists: checklistsToUse
+          };
+          try {
+            localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(extState));
+          } catch {}
+        } else if (localState) {
+          // Supabase vazio — usa localStorage como fonte de verdade
+          extState = {
+            ...INITIAL_STATE,
+            ...localState,
+            checklists: {
+              ...INITIAL_STATE.checklists,
+              ...(localState.checklists || {})
+            }
+          };
+          // Sincroniza o localStorage de volta ao Supabase
+          if (user) {
+            await supabase
+              .from('immigration_profiles')
+              .update({ extended_state: extState, updated_at: new Date().toISOString() })
+              .eq('user_id', user.id);
           }
         }
       } catch (e) {
-        console.warn("Coluna extended_state indisponível. Usando cache local.");
-        const saved = localStorage.getItem('checklist_espanha_app_state_v1');
-        if (saved) {
-          extState = JSON.parse(saved);
+        console.warn("Erro ao carregar extended_state:", e);
+        try {
+          const saved = localStorage.getItem('checklist_espanha_app_state_v1');
+          if (saved) extState = JSON.parse(saved);
+        } catch {}
+      }
+
+      extState = ensureVacationScheduleInState(extState);
+
+      // Sincronizar credenciais do OpenRouter entre o estado do Supabase e o localStorage local
+      if (extState.openrouterApiKey) {
+        try {
+          localStorage.setItem('openrouter_api_key', extState.openrouterApiKey);
+          localStorage.setItem('vtask_openrouter_api_key_v2', extState.openrouterApiKey);
+        } catch {}
+      } else {
+        const localKey = localStorage.getItem('openrouter_api_key') || localStorage.getItem('vtask_openrouter_api_key_v2');
+        if (localKey) {
+          extState.openrouterApiKey = localKey;
         }
       }
+
+      if (extState.openrouterModel) {
+        try {
+          localStorage.setItem('openrouter_model', extState.openrouterModel);
+          localStorage.setItem('vtask_openrouter_model_v2', extState.openrouterModel);
+        } catch {}
+      } else {
+        const localModel = localStorage.getItem('openrouter_model') || localStorage.getItem('vtask_openrouter_model_v2');
+        if (localModel) {
+          extState.openrouterModel = localModel;
+        }
+      }
+
       setExtendedState(extState);
 
       // 2. Carrega checklists
@@ -481,8 +569,8 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
   async function handleAISync() {
     if (!user) return;
     
-    const key = localStorage.getItem('openrouter_api_key');
-    const model = localStorage.getItem('openrouter_model') || 'google/gemini-2.5-flash:free';
+    const key = extendedState.openrouterApiKey || localStorage.getItem('openrouter_api_key') || localStorage.getItem('vtask_openrouter_api_key_v2');
+    const model = extendedState.openrouterModel || localStorage.getItem('openrouter_model') || localStorage.getItem('vtask_openrouter_model_v2') || 'google/gemini-2.5-flash:free';
     
     if (!key) {
       alert("Configuração de API do vTask Agent Requerida!\n\nPara sincronizar a jornada personalizada com Inteligência Artificial, você precisa cadastrar a sua API Key da OpenRouter.\n\nComo cadastrar:\n1. Abra o chatbot vTask Agent no canto inferior direito.\n2. Clique no ícone de engrenagem de configurações.\n3. Insira sua API Key do OpenRouter e salve.\n4. Tente sincronizar novamente!");
@@ -576,7 +664,7 @@ Retorne estritamente o JSON pronto para ser parseado.`;
       const parsed = JSON.parse(text);
       
       const newExtended: AppState = {
-        ...extendedState,
+        ...extendedStateRef.current,
         timelineTasks: parsed.timelineTasks || [],
         checklists: parsed.checklists || {},
         packingChecklists: parsed.packingChecklists || {},
@@ -672,32 +760,61 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     }
   }
 
+  const extendedStateRef = useRef(extendedState);
+  useEffect(() => {
+    extendedStateRef.current = extendedState;
+  }, [extendedState]);
+
   // ────────── SINCRONIZAÇÃO EM NUVEM ──────────
-  async function updateExtendedState(newState: AppState) {
-    if (!user || !profile) return;
-    setExtendedState(newState);
-    localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(newState));
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+  // Persiste um estado já montado no Supabase — não mexe no state do React
+  async function persistToSupabase(state: AppState) {
+    if (!user) return;
+    // Bloqueia saves enquanto o perfil não foi carregado do Supabase
+    // (evita sobrescrever dados com o INITIAL_STATE vazio durante a inicialização)
+    const profileId = profileRef.current?.id;
+    if (!profileId || profileId === 'local') return;
+    setSyncStatus('saving');
+    try {
+      const { error } = await supabase
+        .from('immigration_profiles')
+        .update({ extended_state: state, updated_at: new Date().toISOString() })
+        .eq('id', profileId);
 
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        if (!profile?.id || profile.id === 'local') return;
-        const { error } = await supabase
-          .from('immigration_profiles')
-          .update({ extended_state: newState })
-          .eq('id', profile.id);
-
-        if (error) {
-          console.warn("Erro ao salvar extended_state no Supabase (verifique se a coluna existe):", error.message);
-        }
-      } catch (e) {
-        console.warn("Erro ao atualizar extended_state na nuvem:", e);
+      if (error) {
+        console.warn("Erro ao salvar extended_state no Supabase:", error.message);
+        setSyncStatus('error');
+      } else {
+        setSyncStatus('saved');
+        setLastSyncTime(new Date().toLocaleTimeString('pt-BR'));
       }
-    }, 800);
+    } catch (e) {
+      console.warn("Erro ao atualizar extended_state na nuvem:", e);
+      setSyncStatus('error');
+    }
   }
+
+  async function updateExtendedState(newState: AppState) {
+    if (!user) return;
+    extendedStateRef.current = newState;
+    setExtendedState(newState);
+    try { localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(newState)); } catch {}
+    await persistToSupabase(newState);
+  }
+
+  // Garantir salvamento no Supabase se o usuário fechar a aba/janela rapidamente
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (user && extendedStateRef.current) {
+        supabase
+          .from('immigration_profiles')
+          .update({ extended_state: extendedStateRef.current, updated_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user]);
 
   // ────────── TODOIST INTEGRATION ──────────
   useEffect(() => {
@@ -725,8 +842,9 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     localStorage.setItem('todoist_connected', 'false');
     localStorage.setItem('todoist_simulated', 'false');
     addTodoistLog(`[AUTH] Desconectado da integração do Todoist.`);
-    const updatedEvents = (extendedState.events || []).filter(e => e.sourceType !== 'todoist');
-    updateExtendedState({ ...extendedState, events: updatedEvents });
+    const currentExt = extendedStateRef.current || extendedState;
+    const updatedEvents = (currentExt.events || []).filter(e => e.sourceType !== 'todoist');
+    updateExtendedState({ ...currentExt, events: updatedEvents });
   };
 
   const handleTriggerTodoistSync = async (tokenInput?: string) => {
@@ -747,7 +865,8 @@ Retorne estritamente o JSON pronto para ser parseado.`;
           { id: 'sim_4', title: '🛒 Comprar itens de viagem', description: 'Adaptador de tomada, cadeados e tags', date: new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).toISOString().split('T')[0] },
         ];
         
-        const currentEvents = extendedState.events || [];
+        const currentExt = extendedStateRef.current || extendedState;
+        const currentEvents = currentExt.events || [];
         const nonTodoistEvents = currentEvents.filter(e => e.sourceType !== 'todoist');
         
         const newEvents = mockTasks.map(t => ({
@@ -762,7 +881,7 @@ Retorne estritamente o JSON pronto para ser parseado.`;
         }));
 
         updateExtendedState({
-          ...extendedState,
+          ...currentExt,
           events: [...nonTodoistEvents, ...newEvents]
         });
         
@@ -789,7 +908,8 @@ Retorne estritamente o JSON pronto para ser parseado.`;
       const datedTasks = tasks.filter((t: any) => t.due && t.due.date);
       addTodoistLog(`[API] Encontradas ${datedTasks.length} tarefas com vencimento.`);
 
-      const currentEvents = extendedState.events || [];
+      const currentExt = extendedStateRef.current || extendedState;
+      const currentEvents = currentExt.events || [];
       const nonTodoistEvents = currentEvents.filter(e => e.sourceType !== 'todoist');
 
       const mappedEvents = datedTasks.map((t: any) => {
@@ -813,7 +933,7 @@ Retorne estritamente o JSON pronto para ser parseado.`;
       });
 
       updateExtendedState({
-        ...extendedState,
+        ...currentExt,
         events: [...nonTodoistEvents, ...mappedEvents]
       });
 
@@ -832,52 +952,70 @@ Retorne estritamente o JSON pronto para ser parseado.`;
 
   // ────────── HANDLERS MY-TRAVEL-DOCS ──────────
   const handleFamilyMembersChange = (updated: FamilyMember[]) => {
-    updateExtendedState({ ...extendedState, familyMembers: updated });
+    const currentExt = extendedStateRef.current || extendedState;
+    updateExtendedState({ ...currentExt, familyMembers: updated });
   };
 
   const handleChecklistsChange = (categoryId: string, items: any[]) => {
-    updateExtendedState({
-      ...extendedState,
-      checklists: {
-        ...extendedState.checklists,
-        [categoryId]: items
-      }
+    setExtendedState(prev => {
+      const next = {
+        ...prev,
+        checklists: {
+          ...(prev.checklists || DEFAULT_CHECKLISTS),
+          [categoryId]: items
+        }
+      };
+      extendedStateRef.current = next;
+      try { localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(next)); } catch {}
+      persistToSupabase(next);
+      return next;
     });
   };
 
   const handlePackingChecklistsChange = (categoryId: string, items: any[]) => {
-    updateExtendedState({
-      ...extendedState,
-      packingChecklists: {
-        ...(extendedState.packingChecklists || DEFAULT_PACKING_CHECKLISTS),
-        [categoryId]: items
-      }
+    setExtendedState(prev => {
+      const next = {
+        ...prev,
+        packingChecklists: {
+          ...(prev.packingChecklists || DEFAULT_PACKING_CHECKLISTS),
+          [categoryId]: items
+        }
+      };
+      extendedStateRef.current = next;
+      try { localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(next)); } catch {}
+      persistToSupabase(next);
+      return next;
     });
   };
 
   const handleFinancialExpensesChange = (updated: FinancialExpense[]) => {
-    updateExtendedState({ ...extendedState, financialExpenses: updated });
+    const cur = extendedStateRef.current;
+    updateExtendedState({ ...cur, financialExpenses: updated });
   };
 
   const handleTimelineTasksChange = (updated: any[]) => {
-    updateExtendedState({ ...extendedState, timelineTasks: updated });
+    const cur = extendedStateRef.current;
+    updateExtendedState({ ...cur, timelineTasks: updated });
   };
 
   const handleTimelineTaskToggle = (taskId: string) => {
+    const cur = extendedStateRef.current;
     updateExtendedState({
-      ...extendedState,
-      timelineTasks: extendedState.timelineTasks.map(task =>
+      ...cur,
+      timelineTasks: cur.timelineTasks.map(task =>
         task.id === taskId ? { ...task, completed: !task.completed } : task
       )
     });
   };
 
   const handleHousingChange = (updated: HousingDetails) => {
-    updateExtendedState({ ...extendedState, housing: updated });
+    const cur = extendedStateRef.current;
+    updateExtendedState({ ...cur, housing: updated });
   };
 
   const handleToursChange = (updated: any[]) => {
-    updateExtendedState({ ...extendedState, tours: updated });
+    const cur = extendedStateRef.current;
+    updateExtendedState({ ...cur, tours: updated });
   };
 
   // Sync Engine Effect (Birthdays, Expiries & Tours)
@@ -942,21 +1080,24 @@ Retorne estritamente o JSON pronto para ser parseado.`;
   }, [extendedState.familyMembers, extendedState.tours]);
 
   const handleAddEvent = (event: AppEvent) => {
-    const updatedEvents = [...(extendedState.events || []), event];
-    updateExtendedState({ ...extendedState, events: updatedEvents });
+    const cur = extendedStateRef.current;
+    const updatedEvents = [...(cur.events || []), event];
+    updateExtendedState({ ...cur, events: updatedEvents });
     addTodoistLog(`Evento criado: "${event.title}"`);
   };
 
   const handleUpdateEvent = (updated: AppEvent) => {
-    const updatedEvents = (extendedState.events || []).map(e => e.id === updated.id ? updated : e);
-    updateExtendedState({ ...extendedState, events: updatedEvents });
+    const cur = extendedStateRef.current;
+    const updatedEvents = (cur.events || []).map(e => e.id === updated.id ? updated : e);
+    updateExtendedState({ ...cur, events: updatedEvents });
     addTodoistLog(`Evento atualizado: "${updated.title}"`);
   };
 
   const handleDeleteEvent = (eventId: string) => {
-    const ev = (extendedState.events || []).find(e => e.id === eventId);
-    const updatedEvents = (extendedState.events || []).filter(e => e.id !== eventId);
-    updateExtendedState({ ...extendedState, events: updatedEvents });
+    const cur = extendedStateRef.current;
+    const ev = (cur.events || []).find(e => e.id === eventId);
+    const updatedEvents = (cur.events || []).filter(e => e.id !== eventId);
+    updateExtendedState({ ...cur, events: updatedEvents });
     if (ev) {
       addTodoistLog(`Evento removido: "${ev.title}"`);
     }
@@ -967,17 +1108,15 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     if (!user) return;
     const updated = { ...profile, [field]: value };
     setProfile(updated);
-
-    if (!profile?.id || profile.id === 'local') {
+    try {
       localStorage.setItem('immigration_profile_local', JSON.stringify(updated));
-      return;
-    }
+    } catch {}
 
     try {
       const { error } = await supabase
         .from('immigration_profiles')
         .update({ [field]: value, updated_at: new Date().toISOString() })
-        .eq('id', profile.id);
+        .eq('user_id', user.id);
 
       if (error) throw error;
     } catch (err) {
@@ -1004,6 +1143,79 @@ Retorne estritamente o JSON pronto para ser parseado.`;
       if (error) throw error;
     } catch (err) {
       console.error("Erro ao atualizar status do checklist:", err);
+    }
+  }
+
+  async function reorderOrMoveTask(taskId: string, targetQuarter: number, newPosition?: number, isCompleted?: boolean) {
+    setSyncStatus('saving');
+    const targetTask = checklists.find(t => String(t.id) === String(taskId));
+    if (!targetTask) return;
+
+    const updatedIsCompleted = isCompleted !== undefined ? isCompleted : targetTask.is_completed;
+    const updatedQuarter = targetQuarter;
+    const updatedPosition = newPosition !== undefined ? newPosition : (targetTask.position || 0);
+
+    const updatedChecklists = checklists.map(t => {
+      if (String(t.id) === String(taskId)) {
+        return {
+          ...t,
+          quarter: updatedQuarter,
+          position: updatedPosition,
+          is_completed: updatedIsCompleted
+        };
+      }
+      return t;
+    });
+
+    setChecklists(updatedChecklists);
+    try {
+      localStorage.setItem('immigration_checklists_local', JSON.stringify(updatedChecklists));
+    } catch {}
+
+    const _extForChecklist = extendedStateRef.current;
+    if (_extForChecklist && _extForChecklist.checklists) {
+      const flatNewChecklists = { ..._extForChecklist.checklists };
+      let foundInExtended = false;
+      Object.keys(flatNewChecklists).forEach(cat => {
+        flatNewChecklists[cat] = flatNewChecklists[cat].map(item => {
+          if (String(item.id) === String(taskId)) {
+            foundInExtended = true;
+            return { ...item, completed: updatedIsCompleted };
+          }
+          return item;
+        });
+      });
+      if (foundInExtended) {
+        updateExtendedState({ ...extendedStateRef.current, checklists: flatNewChecklists });
+      }
+    }
+
+    if (!String(taskId).startsWith('local_') && user) {
+      try {
+        const { error } = await supabase
+          .from('immigration_checklists')
+          .update({
+            quarter: updatedQuarter,
+            position: updatedPosition,
+            is_completed: updatedIsCompleted,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', taskId);
+
+        if (error) {
+          console.warn("Erro ao mover tarefa no Supabase:", error.message);
+          setSyncStatus('error');
+        } else {
+          setSyncStatus('saved');
+          setLastSyncTime(new Date().toLocaleTimeString('pt-BR'));
+        }
+      } catch (err) {
+        console.error("Erro ao mover tarefa:", err);
+        setSyncStatus('error');
+      }
+    } else {
+      setSyncStatus('saved');
+      setLastSyncTime(new Date().toLocaleTimeString('pt-BR'));
     }
   }
 
@@ -1496,6 +1708,7 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     handleConnectTodoistSimulated,
     updateProfileField,
     toggleChecklistTask,
+    reorderOrMoveTask,
     saveTask,
     deleteTask,
     saveContact,
@@ -1511,6 +1724,25 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     handleLoadScenario,
     formatValue,
     userName,
+    syncStatus,
+    lastSyncTime,
+    updateOpenRouterConfig: (apiKey: string, model: string) => {
+      const cleanKey = apiKey.trim();
+      const cleanModel = model.trim() || 'google/gemini-2.5-flash:free';
+
+      try {
+        localStorage.setItem('openrouter_api_key', cleanKey);
+        localStorage.setItem('vtask_openrouter_api_key_v2', cleanKey);
+        localStorage.setItem('openrouter_model', cleanModel);
+        localStorage.setItem('vtask_openrouter_model_v2', cleanModel);
+      } catch {}
+
+      updateExtendedState({
+        ...extendedStateRef.current,
+        openrouterApiKey: cleanKey,
+        openrouterModel: cleanModel
+      });
+    },
   };
 
   return (

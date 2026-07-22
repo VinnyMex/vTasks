@@ -21,7 +21,6 @@ export default function AuthCallbackPage() {
         // Usa setSession para registrar a sessão sem chamar /auth/v1/user
         const { error } = await supabase.auth.setSession({ access_token, refresh_token });
         if (error) {
-          console.error("[callback] setSession error:", error.message);
           router.replace("/login?error=auth&reason=session");
           return;
         }

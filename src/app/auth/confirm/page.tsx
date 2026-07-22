@@ -22,10 +22,7 @@ export default function AuthConfirmPage() {
     const code = searchParams.get("code");
     const next = searchParams.get("next") ?? "/";
 
-    console.log("[auth/confirm] code present:", !!code, "| next:", next);
-
     if (!code) {
-      console.error("[auth/confirm] sem code na URL");
       setErrorMsg("Parâmetro de autenticação ausente.");
       setTimeout(() => router.replace("/login?error=auth"), 2000);
       return;
@@ -34,11 +31,10 @@ export default function AuthConfirmPage() {
     supabase.auth.exchangeCodeForSession(code)
       .then(({ data, error }) => {
         if (error) {
-          console.error("[auth/confirm] exchangeCodeForSession error:", error.message, error);
           setErrorMsg(error.message);
           setTimeout(() => router.replace("/login?error=auth"), 3000);
         } else {
-          console.log("[auth/confirm] sessão criada:", data.session?.user?.email);
+          void data;
           router.replace(next);
         }
       });

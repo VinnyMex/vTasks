@@ -195,8 +195,37 @@ function ImigracaoModais() {
 }
 
 function ImigracaoShellInner({ children }: { children: React.ReactNode }) {
+  const { syncStatus, lastSyncTime } = useImigracao();
+
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
+      {/* Barra de Status de Sincronização em Tempo Real Supabase */}
+      <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs">
+        <div className="flex items-center gap-2 font-bold">
+          {syncStatus === 'saving' && (
+            <span className="inline-flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+              🔄 Sincronizando com o Supabase em tempo real...
+            </span>
+          )}
+          {syncStatus === 'saved' && (
+            <span className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              🟢 Cloud Sync Ativo — Salvo no Supabase em tempo real ({lastSyncTime})
+            </span>
+          )}
+          {syncStatus === 'error' && (
+            <span className="inline-flex items-center gap-2 text-red-600 dark:text-red-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              ⚠️ Falha ao salvar no Supabase (salvo no cache local)
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] font-mono text-zinc-400 hidden sm:block">
+          Supabase PostgreSQL Realtime Active
+        </div>
+      </div>
+
       {children}
       <ImigracaoModais />
     </div>

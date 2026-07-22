@@ -10,7 +10,7 @@ interface FamilyFormProps {
 }
 
 export default function FamilyForm({ familyMembers, onChangeFamilyMembers, destinationCountry, travelYear }: FamilyFormProps) {
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
 
   const familyTips = [
     { 

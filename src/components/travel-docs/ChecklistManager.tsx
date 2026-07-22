@@ -18,7 +18,7 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
   const [newItemText, setNewItemText] = useState<string>('');
   const [newItemPriority, setNewItemPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
 
   // Hover states
   const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
