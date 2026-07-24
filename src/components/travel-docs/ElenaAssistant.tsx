@@ -70,9 +70,15 @@ function buildSystemContext(state: AppState, dbExpenses: any[]): string {
     return `- ${e.date} | ${e.title} (${e.category || 'Outro'}): ${e.currency} ${total.toFixed(2)} (Recebedor: ${e.recipient || 'N/A'})`;
   }).join('\n');
 
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
   return `Você é o vTask Agent, um assistente especializado em imigração e organização de viagens internacionais. Você é empático, encorajador, direta e especialista. Use um tom amigável mas profissional, em português do Brasil.
 
+**IMPORTANTE: A data de hoje é ${todayStr}. Use SEMPRE esta data como referência para calcular prazos, tempo restante e recomendações. Ignore qualquer data de corte de treinamento que você possa ter — a data real fornecida aqui é a correta.**
+
 ## Contexto atual do usuário no app "My Travel Docs":
+- **Data atual:** ${todayStr}
 - **Destino:** ${destination}
 - **Data planejada:** ${year}
 
@@ -114,7 +120,7 @@ function createWelcomeMessage(): Message {
 
 export default function ElenaAssistant({ state }: ElenaAssistantProps) {
   const { user } = useAuth();
-  const { updateOpenRouterConfig, updateExtendedState, extendedState } = useImigracao();
+  const { updateOpenRouterConfig, updateExtendedState, extendedState, saveChatSessions } = useImigracao();
 
   // Ref sempre atualizado com o extendedState mais recente do contexto,
   // usado no useEffect de auto-save para evitar closure stale.
@@ -222,6 +228,9 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
   const [error, setError] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesLengthRef = useRef(0);
+  const userScrolledUpRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -247,25 +256,29 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
         localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activeSessionId);
       } catch {}
 
-      // ENVIAR PARA O SUPABASE — usa setTimeout para sair do ciclo de render atual
-      // e evitar o warning "Cannot update a component while rendering a different component"
-      if (updateExtendedState) {
-        const currentState = latestExtendedStateRef.current;
-        const sessionsCopy = sessions;
-        if (currentState) {
-          setTimeout(() => {
-            updateExtendedState({
-              ...latestExtendedStateRef.current,
-              chatSessions: sessionsCopy
-            });
-          }, 0);
-        }
-      }
+      // Salva chatSessions via função dedicada que NÃO faz setExtendedState
+      // (evita re-render do provider e loop infinito)
+      saveChatSessions(sessions);
     }
   }, [sessions, activeSessionId, autoSaveChat]);
 
+  // Auto-scroll: só rola para o fim quando uma mensagem nova chega e o usuário não subiu manualmente
   useEffect(() => {
-    if (open && !minimized) {
+    const prevLen = messagesLengthRef.current;
+    const newLen = messages.length;
+    messagesLengthRef.current = newLen;
+
+    if (!open || minimized) return;
+
+    // Ao abrir o chat ou trocar sessão (length caiu ou zerou): vai direto ao fim sem animar
+    if (prevLen === 0 || newLen < prevLen) {
+      userScrolledUpRef.current = false;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+
+    // Nova mensagem adicionada — só rola se o usuário não estiver lendo mensagens anteriores
+    if (newLen > prevLen && !userScrolledUpRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, open, minimized]);
@@ -437,9 +450,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
       localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activeSessionId);
     } catch {}
 
-    if (updateExtendedState) {
-      updateExtendedState({ ...latestExtendedStateRef.current, chatSessions: sessions });
-    }
+    saveChatSessions(sessions);
 
     setShowUnsavedWarningModal(false);
     setOpen(false);
@@ -667,10 +678,10 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
           id="elena-chat-panel"
           className={`fixed z-50 flex flex-col rounded-2xl shadow-2xl transition-all duration-300 ${
             minimized
-              ? 'bottom-6 right-6 w-72 h-14'
+              ? 'bottom-4 right-2 sm:bottom-6 sm:right-6 w-64 sm:w-72 h-14'
               : isExpandedMax
-              ? 'top-[75px] bottom-4 right-4 sm:right-6 w-[92vw] sm:w-[540px] md:w-[680px] h-[calc(100vh-95px)] max-h-[calc(100vh-95px)]'
-              : 'bottom-6 right-6 w-80 sm:w-96 h-[560px] max-h-[calc(100vh-100px)]'
+              ? 'top-[75px] bottom-2 right-2 sm:bottom-4 sm:right-6 w-[calc(100vw-16px)] sm:w-[540px] md:w-[680px] h-[calc(100vh-95px)] max-h-[calc(100vh-95px)]'
+              : 'bottom-4 right-2 sm:bottom-6 sm:right-6 w-[calc(100vw-16px)] sm:w-96 h-[520px] sm:h-[560px] max-h-[calc(100vh-80px)]'
           }`}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
         >
@@ -937,7 +948,16 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
               )}
 
               {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin">
+              <div
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin"
+                onScroll={() => {
+                  const el = scrollContainerRef.current;
+                  if (!el) return;
+                  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+                  userScrolledUpRef.current = !atBottom;
+                }}
+              >
                 {messages.map(msg => (
                   <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                     {/* Avatar */}

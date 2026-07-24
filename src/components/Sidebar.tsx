@@ -25,29 +25,28 @@ const NAV = [
 ];
 
 const IMIGRACAO_NAV = [
-  { icon: User,          label: "Visão Geral",        href: "/visao-geral"          },
-  { icon: Home,          label: "Família",            href: "/familia-imigracao"    },
-  { icon: Luggage,       label: "Checklists",         href: "/checklists-viagem"    },
-  { icon: TrendingUp,    label: "Custos Imigração",   href: "/custos-imigracao"     },
-  { icon: Coffee,        label: "Passeios",           href: "/passeios"             },
-  { icon: CalendarDays,  label: "Cal. Imigração",     href: "/calendario-imigracao" },
-  { icon: ClipboardCheck,label: "Regularização",      href: "/regularizacao"        },
-  { icon: Phone,         label: "Contatos",           href: "/contatos-imigracao"   },
-  { icon: FileArchive,   label: "Documentos",         href: "/documentos-imigracao" },
+  { icon: User,          label: "Visão Geral",        href: "/visao-geral", badge: "Grátis" },
+  { icon: Home,          label: "Família",            href: "/familia-imigracao", badge: "Grátis" },
+  { icon: Luggage,       label: "Checklists",         href: "/checklists-viagem", badge: "Grátis" },
+  { icon: TrendingUp,    label: "Custos Imigração",   href: "/custos-imigracao", badge: "Grátis" },
+  { icon: ClipboardCheck,label: "Regularização",      href: "/regularizacao", badge: "Grátis" },
+  { icon: CalendarDays,  label: "Passeios & Agenda",  href: "/passeios", isPro: true },
+  { icon: Phone,         label: "Contatos",           href: "/contatos-imigracao", isPro: true },
+  { icon: FileArchive,   label: "Documentos",         href: "/documentos-imigracao", isPro: true },
 ];
 
 const STORAGE_KEY = "vtasks-sidebar-collapsed";
 
-function NavItem({ icon: Icon, label, href, active, collapsed, closeM, small }: {
-  icon: any; label: string; href: string; active: boolean; collapsed: boolean; closeM: () => void; small?: boolean;
+function NavItem({ icon: Icon, label, href, active, collapsed, closeM, small, isPro }: {
+  icon: any; label: string; href: string; active: boolean; collapsed: boolean; closeM: () => void; small?: boolean; isPro?: boolean;
 }) {
   return (
     <Link
       href={href}
       onClick={closeM}
-      title={collapsed ? label : undefined}
-      className={`flex items-center rounded-xl font-semibold transition-all ${
-        collapsed ? "justify-center w-full h-10" : `gap-3 px-3 ${small ? "py-2" : "py-2.5"}`
+      title={collapsed ? `${label} ${isPro ? '(PRO)' : ''}` : undefined}
+      className={`flex items-center justify-between rounded-xl font-semibold transition-all ${
+        collapsed ? "justify-center w-full h-10" : `px-3 ${small ? "py-2" : "py-2.5"}`
       }`}
       style={active
         ? { background: "var(--accent)", color: "#ffffff", boxShadow: "var(--shadow-accent)" }
@@ -66,8 +65,17 @@ function NavItem({ icon: Icon, label, href, active, collapsed, closeM, small }: 
         }
       }}
     >
-      <Icon className={`${small ? "w-3.5 h-3.5" : "w-4 h-4"} flex-shrink-0`} />
-      {!collapsed && <span className={`truncate ${small ? "text-xs" : "text-sm"}`}>{label}</span>}
+      <div className="flex items-center gap-3 min-w-0">
+        <Icon className={`${small ? "w-3.5 h-3.5" : "w-4 h-4"} flex-shrink-0`} />
+        {!collapsed && <span className={`truncate ${small ? "text-xs" : "text-sm"}`}>{label}</span>}
+      </div>
+      {!collapsed && isPro && (
+        <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+          active ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-amber-600 text-white'
+        }`}>
+          PRO
+        </span>
+      )}
     </Link>
   );
 }
@@ -163,8 +171,8 @@ export function Sidebar() {
           )}
         </div>
 
-        {IMIGRACAO_NAV.map(({ icon, label, href }) => (
-          <NavItem key={href} icon={icon} label={label} href={href} active={pathname === href} collapsed={collapsed} closeM={closeM} small />
+        {IMIGRACAO_NAV.map(({ icon, label, href, isPro }) => (
+          <NavItem key={href} icon={icon} label={label} href={href} active={pathname === href} collapsed={collapsed} closeM={closeM} small isPro={isPro} />
         ))}
       </nav>
 

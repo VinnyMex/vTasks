@@ -77,6 +77,8 @@ interface ImigracaoContextType {
   initialPackageBRL: number;
   monthlyExpensesBRL: number;
   extraIncomeBRL: number;
+  monthlyIncomeBRL: number;
+  netMonthlyFlowBRL: number;
   remainingAfterInitialBRL: number;
   months: any[];
 
@@ -148,26 +150,27 @@ interface ImigracaoContextType {
   formatValue: (valueInPrimary: number) => string;
   userName: () => string;
   updateOpenRouterConfig: (apiKey: string, model: string) => void;
+  saveChatSessions: (sessions: any[]) => void;
   syncStatus: 'saved' | 'saving' | 'error';
   lastSyncTime: string;
   reorderOrMoveTask: (taskId: string, targetQuarter: number, newPosition?: number, isCompleted?: boolean) => Promise<void>;
 }
 
 const INITIAL_FORM_DATA = {
-  flights: 15000,
+  flights: 11500,
   stay: 1655,
   food: 1754,
   transport: 372,
   tours: 558,
   emergencyInitial: 1550,
-  rent: 500,
-  bills: 150,
-  market: 700,
-  transportMonthly: 200,
-  health: 100,
-  kids: 150,
-  monthlyReserve: 700,
-  extraIncome: 1000,
+  rent: 3100,
+  bills: 930,
+  market: 4340,
+  transportMonthly: 1240,
+  health: 620,
+  kids: 930,
+  monthlyReserve: 4340,
+  extraIncome: 6200,
 };
 
 const ImigracaoContext = createContext<ImigracaoContextType | null>(null);
@@ -826,6 +829,15 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     setExtendedState(() => newState);
     try { localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(newState)); } catch {}
     await persistToSupabase(newState);
+  }
+
+  // Salva apenas as chatSessions no banco sem tocar no React state — evita re-renders e loops infinitos
+  function saveChatSessions(sessions: any[]) {
+    if (!user) return;
+    const next = { ...extendedStateRef.current, chatSessions: sessions };
+    extendedStateRef.current = next;
+    try { localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(next)); } catch {}
+    persistToSupabase(next);
   }
 
   // Garantir salvamento no Supabase se o usuário fechar a aba/janela rapidamente
@@ -1543,24 +1555,21 @@ Retorne estritamente o JSON pronto para ser parseado.`;
   }
 
   // ────────── LÓGICA DO SIMULADOR FINANCEIRO ──────────
-  const formatValue = (valueInPrimary: number) => {
-    if (activeCurrency === 'BRL') {
-      return `R$ ${Math.round(valueInPrimary).toLocaleString('pt-BR')}`;
-    } else {
-      const sym = activeCurrency === 'EUR' ? '€' : '$';
-      const valueInSecondary = valueInPrimary / exchangeRate;
-      return `${sym} ${valueInSecondary.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-    }
+  const formatValue = (valueInBRL: number) => {
+    const sym = CURRENCY_SYMBOLS[activeCurrency] || 'R$';
+    const rate = activeCurrency === 'BRL' ? 1 : exchangeRate;
+    const valueInActive = (valueInBRL || 0) / rate;
+    return `${sym} ${Math.round(valueInActive).toLocaleString('pt-BR')}`;
   };
 
-  const initialPackageBRL = formData.flights + formData.stay + formData.food +
-    formData.transport + formData.tours + formData.emergencyInitial;
+  const initialPackageBRL = (formData.flights || 0) + (formData.stay || 0) + (formData.food || 0) +
+    (formData.transport || 0) + (formData.tours || 0) + (formData.emergencyInitial || 0);
 
-  const monthlyExpensesSecondary = formData.rent + formData.bills + formData.market +
-    formData.transportMonthly + formData.health + formData.kids + formData.monthlyReserve;
+  const monthlyExpensesBRL = (formData.rent || 0) + (formData.bills || 0) + (formData.market || 0) +
+    (formData.transportMonthly || 0) + (formData.health || 0) + (formData.kids || 0) + (formData.monthlyReserve || 0);
 
-  const monthlyExpensesBRL = monthlyExpensesSecondary * exchangeRate;
-  const extraIncomeBRL = formData.extraIncome * exchangeRate;
+  const monthlyIncomeBRL = formData.extraIncome || 0;
+  const netMonthlyFlowBRL = monthlyIncomeBRL - monthlyExpensesBRL;
   const remainingAfterInitialBRL = budget - initialPackageBRL;
 
   const calculateMonths = () => {
@@ -1569,18 +1578,17 @@ Retorne estritamente o JSON pronto para ser parseado.`;
 
     for (let i = 1; i <= 12; i++) {
       const monthlyExpense = monthlyExpensesBRL;
-      const hasExtraIncome = i >= 2;
-      const extraIncome = hasExtraIncome ? extraIncomeBRL : 0;
-      const netExpense = monthlyExpense - extraIncome;
+      const extraIncome = monthlyIncomeBRL;
+      const netFlow = extraIncome - monthlyExpense;
       const initialBalance = balance;
-      const endBalance = balance - netExpense;
+      const endBalance = balance + netFlow;
 
       monthsArr.push({
         month: i,
         initialBalance,
         monthlyExpense,
         extraIncome,
-        netExpense,
+        netFlow,
         endBalance,
         healthy: endBalance >= 0
       });
@@ -1692,7 +1700,9 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     editingScenarioId,
     initialPackageBRL,
     monthlyExpensesBRL,
-    extraIncomeBRL,
+    extraIncomeBRL: monthlyIncomeBRL,
+    monthlyIncomeBRL,
+    netMonthlyFlowBRL,
     remainingAfterInitialBRL,
     months,
     taskModal,
@@ -1773,6 +1783,7 @@ Retorne estritamente o JSON pronto para ser parseado.`;
         openrouterModel: cleanModel
       });
     },
+    saveChatSessions,
   };
 
   return (

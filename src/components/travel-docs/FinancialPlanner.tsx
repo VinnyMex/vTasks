@@ -123,9 +123,15 @@ export default function FinancialPlanner({
   };
 
   // Calculations (internal storage is always in BRL)
-  // "real" só conta quando marcado como pago
-  const totalRealBRL = expenses.reduce((sum, e) => sum + (e.paid ? e.real : 0), 0);
-  const totalPendingBRL = expenses.reduce((sum, e) => sum + (!e.paid ? e.real : 0), 0);
+  // Orçamento Estimado: itens que NÃO estão marcados como pagos
+  const totalEstimatedBRL = expenses
+    .filter(e => !e.paid)
+    .reduce((sum, e) => sum + (Number(e.real) > 0 ? Number(e.real) : (Number(e.estimated) || 0)), 0);
+
+  // Total Realizado: itens marcados como pagos
+  const totalRealBRL = expenses
+    .filter(e => e.paid)
+    .reduce((sum, e) => sum + (Number(e.real) > 0 ? Number(e.real) : (Number(e.estimated) || 0)), 0);
 
   // Conversion helpers
   const formatValue = (valueInBRL: number) => {
@@ -237,14 +243,14 @@ export default function FinancialPlanner({
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-          <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
-            <span className="block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Realizado / Pago ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-emerald-900 dark:text-emerald-200 block mt-0.5">{formatValue(totalRealBRL)}</span>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
           <div className="p-3 bg-zinc-100 dark:bg-zinc-800/70 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Estimado / Pendente ({currency})</span>
-            <span className="text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-200 block mt-0.5">{formatValue(totalPendingBRL)}</span>
+            <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Orçamento Estimado ({currency})</span>
+            <span className="text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-200 block mt-0.5">{formatValue(totalEstimatedBRL)}</span>
+          </div>
+          <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+            <span className="block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Realizado ({currency})</span>
+            <span className="text-base sm:text-lg font-bold text-emerald-900 dark:text-emerald-200 block mt-0.5">{formatValue(totalRealBRL)}</span>
           </div>
         </div>
 

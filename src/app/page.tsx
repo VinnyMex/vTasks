@@ -6,7 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { 
   ListTodo, FileText, Calendar as CalendarIcon, Zap, ArrowRight,
   Plane, TrendingUp, Users, Luggage, FileArchive, Phone, Coffee, ClipboardCheck,
-  CheckSquare, DollarSign
+  CheckSquare, DollarSign, CalendarDays
 } from "lucide-react";
 import Link from "next/link";
 import { STATUS } from "@/lib/tokens";
@@ -40,6 +40,10 @@ function HomeInner() {
   const { 
     extendedState, 
     profile, 
+    checklists: regularizacaoChecklists,
+    totalTasks: regularizacaoTotal,
+    completedTasks: regularizacaoCompleted,
+    completionPercentage: regularizacaoPct,
     contacts: officialContacts, 
     documents: officialDocuments, 
     loading: imigracaoLoading 
@@ -53,19 +57,21 @@ function HomeInner() {
   const firstName = userName.split(" ")[0];
 
   useEffect(() => {
+    if (!user) return;
     fetchData();
     const channel = supabase
       .channel("home_rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, fetchData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notes" }, fetchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `user_id=eq.${user.id}` }, fetchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${user.id}` }, fetchData)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [user]);
 
   async function fetchData() {
+    if (!user) return;
     const [taskRes, noteRes] = await Promise.all([
-      supabase.from("tasks").select("id, content, status, created_at").order("created_at", { ascending: false }),
-      supabase.from("notes").select("id, title, content, created_at").order("created_at", { ascending: false }).limit(5),
+      supabase.from("tasks").select("id, content, status, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("notes").select("id, title, content, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
     ]);
     const tasks = taskRes.data || [];
     const notes = noteRes.data || [];
@@ -109,31 +115,41 @@ function HomeInner() {
     }).format(val);
   };
 
-  // 1. Cálculos de Documentos
+  // 1. Cálculos de Documentos (Checklists)
   const allDocs = Object.values(extendedState.checklists || {}).flat();
   const totalDocs = allDocs.length;
-  const completedDocs = allDocs.filter(d => d.completed).length;
+  const completedDocs = allDocs.filter((d: any) => d.completed || d.is_completed).length;
   const docsPct = totalDocs > 0 ? Math.round((completedDocs / totalDocs) * 100) : 0;
-  const docsCostBRL = allDocs.reduce((sum, d) => sum + (d.cost || 0), 0);
+  const docsCostBRL = allDocs.filter((d: any) => (d.completed || d.is_completed) && Number(d.cost || 0) > 0).reduce((sum: number, d: any) => sum + (Number(d.cost) || 0), 0);
 
-  // 2. Cálculos de Custos Imigração
-  const totalEstBRL = (extendedState.financialExpenses || []).reduce((sum, e) => sum + e.estimated, 0);
-  const totalRealBRL = (extendedState.financialExpenses || []).reduce((sum, e) => sum + e.real, 0);
+  // 2. Cálculos de Custos Imigração (Planejador)
+  // Estimado: se digitar e NÃO marcar como pago, soma no Estimado
+  const totalEstBRL = (extendedState.financialExpenses || [])
+    .filter((e: any) => !e.paid)
+    .reduce((sum: number, e: any) => sum + (Number(e.real) > 0 ? Number(e.real) : (Number(e.estimated) || 0)), 0);
 
-  // 3. Cálculos de Timeline
-  const totalTimeline = (extendedState.timelineTasks || []).length;
-  const completedTimeline = (extendedState.timelineTasks || []).filter(t => t.completed).length;
-  const timelinePct = totalTimeline > 0 ? Math.round((completedTimeline / totalTimeline) * 100) : 0;
+  // Realizado: aqueles que forem marcados como pago
+  const totalRealBRL = (extendedState.financialExpenses || [])
+    .filter((e: any) => e.paid)
+    .reduce((sum: number, e: any) => sum + (Number(e.real) > 0 ? Number(e.real) : (Number(e.estimated) || 0)), 0);
+
+  // 3. Cálculos de Regularização (Kanban de 8 Trimestres)
+  const totalTimeline = regularizacaoTotal;
+  const completedTimeline = regularizacaoCompleted;
+  const timelinePct = regularizacaoPct;
 
   // 4. Cálculos de Malas
   const allPacking = Object.values(extendedState.packingChecklists || {}).flat();
   const totalPacking = allPacking.length;
-  const completedPacking = allPacking.filter(p => p.completed).length;
+  const completedPacking = allPacking.filter((p: any) => p.completed || p.is_completed).length;
   const packingPct = totalPacking > 0 ? Math.round((completedPacking / totalPacking) * 100) : 0;
 
   // 5. Cálculos de Família
-  const familyCount = (extendedState.familyMembers || []).length;
-  const principalName = (extendedState.familyMembers || []).find(m => m.role === 'principal')?.name || "Não informado";
+  const familyMembers = extendedState.familyMembers || [];
+  const familyCount = familyMembers.length;
+  const familyFirstNames = familyMembers
+    .map((m: any) => m.name?.trim().split(" ")[0])
+    .filter(Boolean);
 
   // 6. Outros
   const docsCount = (officialDocuments || []).length;
@@ -195,9 +211,6 @@ function HomeInner() {
             <Plane className="w-5 h-5" style={{ color: "var(--accent)" }} />
             <span>Jornada de Imigração (ImigraPro)</span>
           </h2>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: "var(--surface-3)", color: "var(--text-muted)" }}>
-            {destCountry} 2026
-          </span>
         </div>
 
         {/* Grid de Módulos da Imigração */}
@@ -216,7 +229,7 @@ function HomeInner() {
                 <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Checklists</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                   {completedDocs} de {totalDocs} documentos prontos.<br />
-                  Custo acumulado: <span className="font-bold">{formatMoney(docsCostBRL)}</span>
+                  {totalDocs - completedDocs} itens pendentes de organização.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px] font-bold uppercase tracking-wider" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
@@ -261,7 +274,7 @@ function HomeInner() {
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Regularização</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Acompanhe as etapas de regularização migratória e o processo de arraigo.<br />
+                  Etapas migratórias e processo de arraigo.<br />
                   Concluídas: <span className="font-bold">{completedTimeline}/{totalTimeline}</span>
                 </p>
               </div>
@@ -284,7 +297,7 @@ function HomeInner() {
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Preparativo de Malas</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Organização e vestuários divididos em malas e itens de mão.<br />
+                  Organização de vestuários e itens de mão.<br />
                   Prontos: <span className="font-bold">{completedPacking}/{totalPacking}</span>
                 </p>
               </div>
@@ -307,8 +320,11 @@ function HomeInner() {
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Dados da Família</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Cadastro de RG, CPF, passaporte e datas para notificação em tempo real.<br />
-                  Principal: <span className="font-bold">{principalName}</span>
+                  {familyFirstNames.length > 0 ? (
+                    <>Membros: <span className="font-bold" style={{ color: "var(--text)" }}>{familyFirstNames.join(", ")}</span></>
+                  ) : (
+                    <span>Nenhum familiar cadastrado.</span>
+                  )}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px] font-bold uppercase tracking-wider" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
@@ -330,8 +346,8 @@ function HomeInner() {
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Pasta de Documentos</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Upload seguro de arquivos digitais para manter cópias e alertas de validade.<br />
-                  Sincronizado na nuvem.
+                  Repositório digital de arquivos e certidões.<br />
+                  {docsCount > 0 ? `${docsCount} arquivo(s) armazenado(s).` : "Nenhum arquivo enviado."}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px] font-bold uppercase tracking-wider" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
@@ -353,7 +369,8 @@ function HomeInner() {
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Contatos Oficiais</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Telefones, e-mails, endereços e sedes eletrônicas de órgãos e ONGs no destino.
+                  Agenda de telefones e e-mails de órgãos no destino.<br />
+                  {contactsCount > 0 ? `${contactsCount} contato(s) registrado(s).` : "Nenhum contato registrado."}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px] font-bold uppercase tracking-wider" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
@@ -363,23 +380,27 @@ function HomeInner() {
             </div>
           </Link>
 
-          {/* Card: Passeios */}
+          {/* Card: Passeios & Agenda Unificada */}
           <Link href="/passeios">
             <div className="card rounded-2xl p-5 cursor-pointer hover:-translate-y-0.5 transition-all flex flex-col justify-between h-full group" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
               <div>
                 <div className="flex items-start justify-between mb-4">
                   <div className="p-2.5 rounded-xl" style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>
-                    <Coffee className="w-5 h-5" />
+                    <CalendarDays className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-red-600 font-mono bg-red-50 dark:bg-red-950/40 dark:text-red-400 px-2 py-0.5 rounded-full">{toursCount} passeios</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-red-600 font-mono bg-red-50 dark:bg-red-950/40 dark:text-red-400 px-2 py-0.5 rounded-full">{toursCount} atrações</span>
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs">PRO</span>
+                  </div>
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Lazer e Passeios</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: "var(--text)" }}>Passeios & Agenda</h3>
                 <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Cronograma de atrações turísticas e integração local planejados para a chegada.
+                  Calendário unificado, atrações e compromissos.<br />
+                  {toursCount > 0 ? `${toursCount} passeio(s) no calendário.` : "Nenhum passeio planejado."}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t flex items-center justify-between text-[10px] font-bold uppercase tracking-wider" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
-                <span className="group-hover:text-red-500 transition-colors">Gerenciar Lazer</span>
+                <span className="group-hover:text-red-500 transition-colors">Abrir Passeios & Agenda</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>

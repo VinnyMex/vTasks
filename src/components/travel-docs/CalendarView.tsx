@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AppEvent } from './types';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Link, Link2Off, Terminal, Bell, Play, X, Check, AlertCircle } from 'lucide-react';
+import { AppEvent, TourActivity } from './types';
+import { Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, Trash2, Pencil, Link, Link2Off, Terminal, Bell, Play, X, Check, AlertCircle, MapPin, Ticket, Clock, DollarSign } from 'lucide-react';
 
 interface CalendarViewProps {
   events: AppEvent[];
+  tours?: TourActivity[];
   onAddEvent: (event: AppEvent) => void;
   onUpdateEvent: (event: AppEvent) => void;
   onDeleteEvent: (eventId: string) => void;
@@ -19,6 +20,7 @@ interface CalendarViewProps {
 
 export default function CalendarView({
   events,
+  tours = [],
   onAddEvent,
   onUpdateEvent,
   onDeleteEvent,
@@ -32,6 +34,7 @@ export default function CalendarView({
   onConnectTodoistSimulated
 }: CalendarViewProps) {
   // Calendar View states — initialized to real local today (timezone-safe)
+  const [showTodoistBox, setShowTodoistBox] = useState<boolean>(false);
   const [currentDate, setCurrentDate] = useState<Date>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -40,7 +43,7 @@ export default function CalendarView({
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
-  
+
   // Event Form state
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -122,8 +125,35 @@ export default function CalendarView({
     setSelectedDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
   };
 
+  // 1. Filtrar eventos sintéticos antigos em events para evitar duplicidade
+  const nonTourEvents = (events || []).filter(e => !e.id.startsWith('tour_ev_'));
+
+  // 2. Mapear passeios com data para eventos do calendário com IDs únicos
+  const tourEvents: AppEvent[] = (tours || [])
+    .filter(t => !!t.date)
+    .map(t => ({
+      id: `tour_ev_${t.id}`,
+      title: t.title.startsWith('🌴') ? t.title : `🌴 ${t.title}`,
+      date: t.date!,
+      time: t.time,
+      description: t.notes || `Passeio / Atração (${t.status === 'concluido' ? 'Concluído' : t.status === 'pago' ? 'Pago' : 'Planejado'}) - ${t.location || 'Sem local'}`,
+      notifyOneDayBefore: false,
+      sourceType: 'tour' as const,
+      sourceId: t.id
+    }));
+
+  // 3. Garantir unicidade total por ID
+  const uniqueEventMap = new Map<string, AppEvent>();
+  for (const ev of nonTourEvents) {
+    uniqueEventMap.set(ev.id, ev);
+  }
+  for (const ev of tourEvents) {
+    uniqueEventMap.set(ev.id, ev);
+  }
+  const allEvents = Array.from(uniqueEventMap.values());
+
   // Get events on selected date
-  const eventsForSelectedDate = events.filter(e => e.date === selectedDateStr).sort((a, b) => {
+  const eventsForSelectedDate = allEvents.filter(e => e.date === selectedDateStr).sort((a, b) => {
     const timeA = a.time || '23:59';
     const timeB = b.time || '23:59';
     return timeA.localeCompare(timeB);
@@ -132,7 +162,7 @@ export default function CalendarView({
   // Get event indicators for calendar grid (timezone-safe)
   const getEventsForDate = (d: Date) => {
     const dStr = localDateStr(d);
-    return events.filter(e => e.date === dStr);
+    return allEvents.filter(e => e.date === dStr);
   };
 
   const handleOpenNewForm = () => {
@@ -196,119 +226,145 @@ export default function CalendarView({
 
   return (
     <div className="space-y-6">
-      {/* Overview & Integrations top row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Todoist Connection Settings */}
-        <div className="lg:col-span-6 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h3 className="text-sm font-bold flex items-center gap-1.5" style={{ color: "var(--text)" }}>
-                <Check className="w-4 h-4 text-orange-500" />
-                <span>Integração Todoist</span>
-              </h3>
-              
-              {/* Connection Status badge */}
-              {isTodoistConnected ? (
-                <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
-                  <Check className="w-3 h-3 stroke-[3]" /> Conectado Real
-                </span>
-              ) : isTodoistSimulated ? (
-                <span className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
-                  <Play className="w-2.5 h-2.5 fill-orange-500 text-orange-500" /> Simulado
-                </span>
-              ) : (
-                <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md">
-                  Desconectado
-                </span>
-              )}
-            </div>
-
-            <p className="text-[11px] text-zinc-400 leading-normal">
-              Sincronize suas tarefas e compromissos do Todoist em tempo real direto na sua agenda pessoal.
-            </p>
-
-            <div className="space-y-2">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Todoist API Token</label>
-                <input
-                  type="password"
-                  value={todoistToken}
-                  onChange={(e) => onChangeTodoistToken(e.target.value)}
-                  placeholder="Insira seu Todoist API Token das configurações..."
-                  className="w-full bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  style={{ minHeight: '38px' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 mt-4 flex flex-wrap gap-2">
-            {!isTodoistConnected && !isTodoistSimulated ? (
-              <>
-                <button
-                  type="button"
-                  onClick={onConnectTodoistSimulated}
-                  className="flex-1 bg-zinc-100 dark:bg-white dark:bg-zinc-900/5 hover:bg-zinc-200 dark:hover:bg-white dark:bg-zinc-900/10 text-zinc-700 dark:text-zinc-300 font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  style={{ minHeight: '38px' }}
-                >
-                  <Play className="w-3.5 h-3.5 text-orange-500" />
-                  <span>Modo Simulado</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onTriggerTodoistSync(todoistToken)}
-                  disabled={!todoistToken}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  style={{ minHeight: '38px' }}
-                >
-                  <Link className="w-3.5 h-3.5" />
-                  <span>Conectar Todoist</span>
-                </button>
-              </>
+      {/* Todoist Integration Header Bar (Oculto/Encolhido por padrão) */}
+      <div className="no-print">
+        <button
+          type="button"
+          onClick={() => setShowTodoistBox(prev => !prev)}
+          className="w-full flex items-center justify-between p-3.5 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-all cursor-pointer shadow-2xs"
+        >
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-orange-500" />
+            <span>Sincronização Todoist & API (Configurável no Perfil)</span>
+            {isTodoistConnected ? (
+              <span className="text-[9px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-md">Conectado Real</span>
+            ) : isTodoistSimulated ? (
+              <span className="text-[9px] font-bold bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400 px-2 py-0.5 rounded-md">Simulado</span>
             ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onTriggerTodoistSync(todoistToken)}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                  style={{ minHeight: '38px' }}
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  <span>Sincronizar Agora</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onDisconnectTodoist}
-                  className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 p-2 rounded-xl cursor-pointer transition-all flex items-center justify-center"
-                  style={{ minWidth: '38px', minHeight: '38px' }}
-                  title="Desconectar do Todoist"
-                >
-                  <Link2Off className="w-4 h-4" />
-                </button>
-              </>
+              <span className="text-[9px] font-bold bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 px-2 py-0.5 rounded-md">Desconectado</span>
             )}
           </div>
-        </div>
-
-        {/* Console Log Panel */}
-        <div className="lg:col-span-6 bg-zinc-950 p-4 rounded-2xl border border-zinc-900 shadow-xs flex flex-col">
-          <div className="flex items-center gap-1.5 pb-2 border-b border-zinc-900 mb-2">
-            <Terminal className="w-4 h-4 text-orange-400 animate-pulse" />
-            <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider">Sync Console Logs (Todoist/API)</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-semibold">
+            <span>{showTodoistBox ? "Ocultar" : "Expandir Configurações / Logs"}</span>
+            {showTodoistBox ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
-          <div className="flex-1 font-mono text-[9px] text-zinc-300 overflow-y-auto no-scrollbar space-y-1 max-h-[148px]" style={{ minHeight: '148px' }}>
-            {todoistSyncLogs.map((log, idx) => (
-              <div key={idx} className="leading-relaxed break-all">
-                {log}
+        </button>
+
+        {showTodoistBox && (
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn">
+            
+            {/* Todoist Connection Settings */}
+            <div className="lg:col-span-6 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h3 className="text-sm font-bold flex items-center gap-1.5" style={{ color: "var(--text)" }}>
+                    <Check className="w-4 h-4 text-orange-500" />
+                    <span>Integração Todoist</span>
+                  </h3>
+                  
+                  {/* Connection Status badge */}
+                  {isTodoistConnected ? (
+                    <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <Check className="w-3 h-3 stroke-[3]" /> Conectado Real
+                    </span>
+                  ) : isTodoistSimulated ? (
+                    <span className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <Play className="w-2.5 h-2.5 fill-orange-500 text-orange-500" /> Simulado
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md">
+                      Desconectado
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-zinc-400 leading-normal">
+                  Sincronize suas tarefas e compromissos do Todoist em tempo real direto na sua agenda pessoal.
+                </p>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Todoist API Token</label>
+                    <input
+                      type="password"
+                      value={todoistToken}
+                      onChange={(e) => onChangeTodoistToken(e.target.value)}
+                      placeholder="Insira seu Todoist API Token das configurações..."
+                      className="w-full bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      style={{ minHeight: '38px' }}
+                    />
+                  </div>
+                </div>
               </div>
-            ))}
-            {todoistSyncLogs.length === 0 && (
-              <span className="text-zinc-550 italic">Nenhuma atividade de sincronização registrada. Conecte ou sincronize para iniciar logs...</span>
-            )}
-          </div>
-        </div>
 
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 mt-4 flex flex-wrap gap-2">
+                {!isTodoistConnected && !isTodoistSimulated ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onConnectTodoistSimulated}
+                      className="flex-1 bg-zinc-100 dark:bg-white dark:bg-zinc-900/5 hover:bg-zinc-200 dark:hover:bg-white dark:bg-zinc-900/10 text-zinc-700 dark:text-zinc-300 font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      style={{ minHeight: '38px' }}
+                    >
+                      <Play className="w-3.5 h-3.5 text-orange-500" />
+                      <span>Modo Simulado</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onTriggerTodoistSync(todoistToken)}
+                      disabled={!todoistToken}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      style={{ minHeight: '38px' }}
+                    >
+                      <Link className="w-3.5 h-3.5" />
+                      <span>Conectar Todoist</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onTriggerTodoistSync(todoistToken)}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-2 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                      style={{ minHeight: '38px' }}
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>Sincronizar Agora</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDisconnectTodoist}
+                      className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 p-2 rounded-xl cursor-pointer transition-all flex items-center justify-center"
+                      style={{ minWidth: '38px', minHeight: '38px' }}
+                      title="Desconectar do Todoist"
+                    >
+                      <Link2Off className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Console Log Panel */}
+            <div className="lg:col-span-6 bg-zinc-950 p-4 rounded-2xl border border-zinc-900 shadow-xs flex flex-col">
+              <div className="flex items-center gap-1.5 pb-2 border-b border-zinc-900 mb-2">
+                <Terminal className="w-4 h-4 text-orange-400 animate-pulse" />
+                <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider">Sync Console Logs (Todoist/API)</span>
+              </div>
+              <div className="flex-1 font-mono text-[9px] text-zinc-300 overflow-y-auto no-scrollbar space-y-1 max-h-[148px]" style={{ minHeight: '148px' }}>
+                {todoistSyncLogs.map((log, idx) => (
+                  <div key={idx} className="leading-relaxed break-all">
+                    {log}
+                  </div>
+                ))}
+                {todoistSyncLogs.length === 0 && (
+                  <span className="text-zinc-550 italic">Nenhuma atividade de sincronização registrada. Conecte ou sincronize para iniciar logs...</span>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
       {/* Main Interactive Monthly Calendar & Selected Day Details */}
@@ -422,11 +478,11 @@ export default function CalendarView({
         </div>
 
         {/* Day Events Details - Right Column */}
-        <div className="lg:col-span-5 flex flex-col bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xs justify-between" style={{ minHeight: '380px' }}>
+        <div className="lg:col-span-5 flex flex-col bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xs h-full min-h-[460px]">
           
           {/* Day list section */}
           {!showEventForm ? (
-            <div className="space-y-4 flex-1 flex flex-col justify-between">
+            <div className="space-y-4 flex-1 flex flex-col">
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800 mb-3">
                   <div>
@@ -444,82 +500,138 @@ export default function CalendarView({
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-[220px] overflow-y-auto no-scrollbar">
-                  {eventsForSelectedDate.map((ev) => (
-                    <div 
-                      key={ev.id}
-                      className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 rounded-xl flex items-start gap-3 hover:border-zinc-200 dark:border-zinc-800 dark:hover:border-zinc-800 transition-colors"
-                    >
-                      {/* Left color bar based on type */}
-                      <span className={`w-1 self-stretch rounded-full ${
-                        ev.sourceType === 'passport_expiry' 
-                          ? 'bg-red-500' 
-                          : ev.sourceType === 'birthday'
-                          ? 'bg-purple-500'
-                          : ev.sourceType === 'tour'
-                          ? 'bg-emerald-500'
-                          : ev.sourceType === 'todoist'
-                          ? 'bg-orange-500'
-                          : 'bg-blue-500'
-                      }`} />
+                <div className="space-y-3 max-h-[460px] overflow-y-auto no-scrollbar pr-1">
+                  {eventsForSelectedDate.map((ev) => {
+                    const matchingTour = ev.sourceType === 'tour' ? (tours || []).find(t => t.id === ev.sourceId) : null;
+                    const titleText = matchingTour ? matchingTour.title : ev.title;
+                    const timeText = ev.time || matchingTour?.time;
+                    const locationText = matchingTour?.location || (ev.description && !ev.description.startsWith('Passeio / Atração') ? ev.description : null);
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{ev.title}</span>
-                          
-                          {/* Time badge if exists */}
-                          {ev.time && (
-                            <span className="text-[9px] font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 rounded">
-                              {ev.time}
-                            </span>
-                          )}
-
-                          {/* Notify Bell badge */}
-                          {ev.notifyOneDayBefore && (
-                            <span className="text-[9px] bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Notificação 1 dia antes ativa">
-                              <Bell className="w-2.5 h-2.5" />
-                              <span>1d</span>
-                            </span>
-                          )}
-                        </div>
-
-                        {ev.description && (
-                          <p className="text-[10px] text-zinc-400 mt-1 leading-relaxed">{ev.description}</p>
-                        )}
-                        
-                        {/* Type Label */}
-                        <span className="inline-block text-[8px] uppercase tracking-wider font-bold text-zinc-400 mt-1">
-                          {ev.sourceType === 'passport_expiry' 
-                            ? 'Compromisso Importante' 
+                    return (
+                      <div 
+                        key={ev.id}
+                        className="p-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 rounded-xl flex items-start gap-3 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-xs"
+                      >
+                        {/* Left color bar based on type */}
+                        <span className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${
+                          ev.sourceType === 'passport_expiry' 
+                            ? 'bg-red-500' 
                             : ev.sourceType === 'birthday'
-                            ? 'Lembrete Pessoal'
+                            ? 'bg-purple-500'
                             : ev.sourceType === 'tour'
-                            ? 'Tarefa / Afazer'
+                            ? 'bg-emerald-500'
                             : ev.sourceType === 'todoist'
-                            ? 'Todoist Sync'
-                            : 'Geral'}
-                        </span>
-                      </div>
+                            ? 'bg-orange-500'
+                            : 'bg-blue-500'
+                        }`} />
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 self-center">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEdit(ev)}
-                          className="p-1 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-900 cursor-pointer"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteEvent(ev.id)}
-                          className="p-1 text-zinc-400 hover:text-red-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-900 cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          {/* Top Row: Title in full width bold */}
+                          <div className="flex items-start justify-between gap-2">
+                            <h5 className="text-xs font-extrabold text-zinc-900 dark:text-zinc-100 leading-snug break-words">
+                              {titleText}
+                            </h5>
+
+                            {/* Actions (Pencil & Trash) */}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEdit(ev)}
+                                className="p-1 text-zinc-400 hover:text-blue-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                                title="Editar"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onDeleteEvent(ev.id)}
+                                className="p-1 text-zinc-400 hover:text-red-500 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Badges Row: Time, Status, Ticket, Notify */}
+                          <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                            {timeText && (
+                              <span className="font-mono bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>{timeText}</span>
+                              </span>
+                            )}
+
+                            {matchingTour && (
+                              <>
+                                <span className={`font-bold px-2 py-0.5 rounded-md ${
+                                  matchingTour.status === 'concluido'
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                    : matchingTour.status === 'pago'
+                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                                }`}>
+                                  {matchingTour.status === 'concluido' ? 'Concluído' : matchingTour.status === 'pago' ? 'Reservado' : 'Planejado'}
+                                </span>
+
+                                {matchingTour.ticketAttached && (
+                                  <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                    <Ticket className="w-2.5 h-2.5" />
+                                    <span>Ingresso OK</span>
+                                  </span>
+                                )}
+                              </>
+                            )}
+
+                            {ev.notifyOneDayBefore && (
+                              <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Notificação 1 dia antes ativa">
+                                <Bell className="w-2.5 h-2.5" />
+                                <span>Alertar 1d</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Location Line */}
+                          {locationText && (
+                            <p className="text-[11px] text-zinc-600 dark:text-zinc-350 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-zinc-400 flex-shrink-0" />
+                              <span className="truncate">{locationText.replace(/^Local:\s*/, '')}</span>
+                            </p>
+                          )}
+
+                          {/* Tour Cost if exists */}
+                          {matchingTour && matchingTour.cost !== undefined && matchingTour.cost > 0 && (
+                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              <DollarSign className="w-3 h-3 flex-shrink-0" />
+                              <span>Custo: {matchingTour.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </p>
+                          )}
+
+                          {/* Notes or Description if houver */}
+                          {matchingTour?.notes && (
+                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 italic bg-zinc-100/60 dark:bg-zinc-900 p-1.5 rounded-md border-l-2 border-zinc-300 dark:border-zinc-700">
+                              {matchingTour.notes}
+                            </p>
+                          )}
+
+                          {/* Source Type Badge */}
+                          <div className="pt-0.5">
+                            <span className="inline-block text-[8px] uppercase tracking-wider font-extrabold text-zinc-400">
+                              {ev.sourceType === 'passport_expiry' 
+                                ? 'COMPROMISSO IMPORTANTE' 
+                                : ev.sourceType === 'birthday'
+                                ? 'LEMBRETE PESSOAL'
+                                : ev.sourceType === 'tour'
+                                ? 'PASSEIO / ROTEIRO'
+                                : ev.sourceType === 'todoist'
+                                ? 'TODOIST SYNC'
+                                : 'TAREFA / AFAZER'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {eventsForSelectedDate.length === 0 && (
                     <div className="py-8 text-center text-zinc-400">

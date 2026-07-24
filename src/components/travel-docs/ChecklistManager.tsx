@@ -359,9 +359,131 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
           {/* Active List Render */}
           <div className="space-y-2 flex-1">
             {filteredItems.map((item) => {
+              const isCompleted = item.completed;
               const isExpanded = expandedNotesId === item.id;
               const isItemHovered = hoveredItemId === item.id;
 
+              // 1. COMPACT COLLAPSED VIEW FOR COMPLETED CHECKLIST ITEMS
+              if (isCompleted && !isExpanded) {
+                return (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-xl border-2 border-emerald-400 dark:border-emerald-500/80 opacity-60 hover:opacity-95 shadow-sm transition-all flex items-center justify-between gap-2"
+                    style={{ background: "var(--surface)" }}
+                  >
+                    <div
+                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                      onClick={() => handleToggleItem(item.id)}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleToggleItem(item.id); }}
+                        className="w-5 h-5 rounded-md bg-emerald-500 border border-emerald-500 text-white flex items-center justify-center flex-shrink-0 cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </button>
+                      <span className="text-xs font-bold line-through text-zinc-400 dark:text-zinc-500 truncate select-none">
+                        {interpolateText(item.text, destinationCountry, travelYear)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandNotes(item.id)}
+                        title="Expandir detalhes"
+                        className="p-1 rounded-md text-zinc-400 hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 2. EXPANDED VIEW FOR COMPLETED CHECKLIST ITEMS
+              if (isCompleted && isExpanded) {
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3.5 rounded-xl border-2 border-emerald-400 dark:border-emerald-500/80 opacity-90 shadow-sm transition-all space-y-3"
+                    style={{ background: "var(--surface)" }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5 flex-1 min-w-0" onClick={() => handleToggleItem(item.id)}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleToggleItem(item.id); }}
+                          className="mt-0.5 w-5 h-5 rounded-md bg-emerald-500 border border-emerald-500 text-white flex items-center justify-center flex-shrink-0 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-bold line-through text-zinc-400 dark:text-zinc-500 block select-none">
+                            {interpolateText(item.text, destinationCountry, travelYear)}
+                          </span>
+                          <span className={`inline-block text-[9px] font-bold rounded-md px-1.5 py-0.5 uppercase tracking-wide mt-1.5 ${
+                            item.priority === 'high'
+                              ? 'bg-red-50 text-red-600'
+                              : item.priority === 'medium'
+                              ? 'bg-amber-50 text-amber-600'
+                              : 'bg-zinc-100 text-zinc-600'
+                          }`}>
+                            {item.priority === 'high' ? 'Alta prioridade' : item.priority === 'medium' ? 'Prioridade Média' : 'Baixa Prioridade'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandNotes(item.id)}
+                          title="Recolher detalhes"
+                          className="p-1 rounded-md text-zinc-400 hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        {item.id.startsWith('item_') && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="p-1 rounded-md text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expandable Notes & Title edit */}
+                    <div className="pt-3 border-t grid grid-cols-1 md:grid-cols-2 gap-3" style={{ borderColor: 'var(--border)' }}>
+                      <div className="flex flex-col gap-1.5 md:col-span-2">
+                        <label className="text-[10px] font-bold text-zinc-400">Título / Requisito:</label>
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) => handleUpdateText(item.id, e.target.value)}
+                          className="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          style={{ background: "var(--surface-2)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--border)", color: "var(--text)" }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5 md:col-span-2">
+                        <label className="text-[10px] font-bold text-zinc-400">Anotações:</label>
+                        <textarea
+                          value={item.notes}
+                          onChange={(e) => handleUpdateNotes(item.id, e.target.value)}
+                          placeholder="Adicionar anotação..."
+                          className="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          style={{ background: "var(--surface-2)", borderWidth: '1px', borderStyle: 'solid', borderColor: "var(--border)", color: "var(--text)" }}
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 3. UNCOMPLETED CHECKLIST ITEM VIEW
               return (
                 <div
                   key={item.id}
@@ -371,14 +493,12 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
                   style={{
                     borderWidth: '1px',
                     borderStyle: 'solid',
-                    ...(item.completed
-                      ? { background: "var(--surface-2)", borderColor: "var(--border)" }
-                      : { background: isItemHovered ? "var(--surface-2)" : "var(--surface)", borderColor: "var(--border)", boxShadow: item.completed ? undefined : '0 1px 2px 0 rgba(0,0,0,0.05)' }
-                    )
+                    background: isItemHovered ? "var(--surface-2)" : "var(--surface)",
+                    borderColor: "var(--border)",
+                    boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)'
                   }}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Checkbox */}
                     <button
                       type="button"
                       onClick={() => handleToggleItem(item.id)}
@@ -388,26 +508,18 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
                       style={{
                         minWidth: '24px', minHeight: '24px', width: '22px', height: '22px',
                         borderWidth: '1px', borderStyle: 'solid',
-                        ...(item.completed
-                          ? { background: "var(--accent)", borderColor: "var(--accent)", color: 'white' }
-                          : { borderColor: hoveredCheckboxId === item.id ? 'var(--accent)' : "var(--text-faint)", background: "var(--surface)" }
-                        )
+                        borderColor: hoveredCheckboxId === item.id ? 'var(--accent)' : "var(--text-faint)",
+                        background: "var(--surface)"
                       }}
                     >
-                      {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </button>
 
-                    {/* Text and labels */}
                     <div className="flex-1 min-w-0" onClick={() => handleToggleItem(item.id)}>
-                      <p className={`text-xs font-medium leading-relaxed cursor-pointer select-none flex items-center gap-2 flex-wrap ${
-                        item.completed ? 'line-through' : ''
-                      }`} style={{ color: item.completed ? "var(--text-muted)" : "var(--text)" }}>
+                      <p className="text-xs font-medium leading-relaxed cursor-pointer select-none flex items-center gap-2 flex-wrap" style={{ color: "var(--text)" }}>
                         <span>{interpolateText(item.text, destinationCountry, travelYear)}</span>
                       </p>
 
-                      {/* Badges row */}
                       <div className="flex flex-wrap items-center gap-2 mt-1.5" onClick={(e) => e.stopPropagation()}>
-                        {/* Priority */}
                         <span className={`text-[9px] font-bold rounded-md px-1.5 py-0.5 uppercase tracking-wide ${
                           item.priority === 'high'
                             ? 'bg-red-50 text-red-600'
@@ -418,7 +530,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
                           {item.priority === 'high' ? 'Alta prioridade' : item.priority === 'medium' ? 'Prioridade Média' : 'Baixa Prioridade'}
                         </span>
 
-                        {/* Note indicator button */}
                         <button
                           type="button"
                           onClick={() => toggleExpandNotes(item.id)}
@@ -431,7 +542,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
                       </div>
                     </div>
 
-                    {/* Delete button (for custom added items) */}
                     {item.id.startsWith('item_') && (
                       <button
                         type="button"
@@ -450,7 +560,6 @@ export default function ChecklistManager({ checklists, onChangeChecklists, desti
                     )}
                   </div>
 
-                  {/* Expandable Notes and Cost Input */}
                   {isExpanded && (
                     <div className="mt-3 pt-3 grid grid-cols-1 md:grid-cols-2 gap-4" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-col gap-1.5 md:col-span-2">
