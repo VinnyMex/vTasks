@@ -105,17 +105,17 @@ export const DEFAULT_CHECKLISTS: { [key: string]: any[] } = {
 };
 
 export const DEFAULT_FINANCIAL_EXPENSES: FinancialExpense[] = [
-  { id: 'fe_1', description: 'Taxas para emissão de novos passaportes (família)', category: 'documentos', categoryLabel: 'Documentos', estimated: 1000, real: 0, paid: false },
-  { id: 'fe_2', description: 'Segundas vias de certidões atualizadas nos cartórios', category: 'documentos', categoryLabel: 'Documentos', estimated: 400, real: 0, paid: false },
-  { id: 'fe_3', description: 'Apostilamento de Haia (cartórios de notas)', category: 'documentos', categoryLabel: 'Documentos', estimated: 800, real: 0, paid: false },
-  { id: 'fe_4', description: 'Traduções juramentadas oficiais', category: 'documentos', categoryLabel: 'Documentos', estimated: 1500, real: 0, paid: false },
-  { id: 'fe_5', description: 'Passagens aéreas internacionais', category: 'passagens', categoryLabel: 'Passagens', estimated: 12000, real: 0, paid: false },
-  { id: 'fe_6', description: 'Seguro viagem internacional obrigatório (Schengen)', category: 'passagens', categoryLabel: 'Passagens', estimated: 1800, real: 0, paid: false },
-  { id: 'fe_7', description: 'Primeiro mês de aluguel no destino ({destino})', category: 'moradia', categoryLabel: 'Moradia / Instalação', estimated: 5500, real: 0, paid: false },
-  { id: 'fe_8', description: 'Depósito de caução do aluguel (fiança para garantia)', category: 'moradia', categoryLabel: 'Moradia / Instalação', estimated: 8000, real: 0, paid: false },
-  { id: 'fe_9', description: 'Compras iniciais de supermercado e utensílios básicos', category: 'moradia', categoryLabel: 'Moradia / Instalação', estimated: 2500, real: 0, paid: false },
-  { id: 'fe_10', description: 'Fundo de reserva de emergência (mínimo recomendado para {destino})', category: 'reserva', categoryLabel: 'Fundo de Reserva', estimated: 18000, real: 0, paid: false },
-  { id: 'fe_11', description: 'Gastos adicionais (chips SIM, transporte local, imprevistos)', category: 'outros', categoryLabel: 'Outros Custos', estimated: 1200, real: 0, paid: false }
+  { id: 'fe_1', description: 'Taxas para emissão de novos passaportes (família)', category: 'documentos', categoryLabel: 'Documentos', estimated: 0, real: 0, paid: false },
+  { id: 'fe_2', description: 'Segundas vias de certidões atualizadas nos cartórios', category: 'documentos', categoryLabel: 'Documentos', estimated: 0, real: 0, paid: false },
+  { id: 'fe_3', description: 'Apostilamento de Haia (cartórios de notas)', category: 'documentos', categoryLabel: 'Documentos', estimated: 0, real: 0, paid: false },
+  { id: 'fe_4', description: 'Traduções juramentadas oficiais', category: 'documentos', categoryLabel: 'Documentos', estimated: 0, real: 0, paid: false },
+  { id: 'fe_5', description: 'Passagens aéreas internacionais', category: 'passagens', categoryLabel: 'Passagens', estimated: 0, real: 0, paid: false },
+  { id: 'fe_6', description: 'Seguro viagem internacional obrigatório (Schengen)', category: 'passagens', categoryLabel: 'Passagens', estimated: 0, real: 0, paid: false },
+  { id: 'fe_7', description: 'Primeiro mês de aluguel no destino ({destino})', category: 'moradia', categoryLabel: 'Moradia / Instalação', estimated: 0, real: 0, paid: false },
+  { id: 'fe_8', description: 'Depósito de caução do aluguel (fiança para garantia)', category: 'moradia', categoryLabel: 'Moradia / Instalação', estimated: 0, real: 0, paid: false },
+  { id: 'fe_9', description: 'Compras iniciais de supermercado e utensílios básicos', category: 'moradia', categoryLabel: 'Moradia / Instalação', estimated: 0, real: 0, paid: false },
+  { id: 'fe_10', description: 'Fundo de reserva de emergência (mínimo recomendado para {destino})', category: 'reserva', categoryLabel: 'Fundo de Reserva', estimated: 0, real: 0, paid: false },
+  { id: 'fe_11', description: 'Gastos adicionais (chips SIM, transporte local, imprevistos)', category: 'outros', categoryLabel: 'Outros Custos', estimated: 0, real: 0, paid: false }
 ];
 
 export const DEFAULT_TIMELINE_TASKS: TimelineTask[] = [
@@ -405,7 +405,7 @@ export const VACATION_FINANCIAL_EXPENSES: FinancialExpense[] = [
     description: 'Atrações Principais Férias (Palácio Real, Prado, Bernabéu, Sagrada Família, Park Güell)',
     category: 'outros',
     categoryLabel: 'Passeios e Lazer',
-    estimated: 1240, // € 200 * 6.20
+    estimated: 0,
     real: 0,
     paid: false,
     notes: 'Valor total para 2 adultos + 1 criança de 5 anos (isenta nas atrações).'
@@ -415,7 +415,7 @@ export const VACATION_FINANCIAL_EXPENSES: FinancialExpense[] = [
     description: 'Alimentação Básica 7 Dias de Férias (€ 70,00/dia para a família)',
     category: 'outros',
     categoryLabel: 'Alimentação Férias',
-    estimated: 3038, // € 490 * 6.20
+    estimated: 0,
     real: 0,
     paid: false,
     notes: 'Menus del día, lanches rápidos e supermercado para a criança.'
@@ -425,7 +425,7 @@ export const VACATION_FINANCIAL_EXPENSES: FinancialExpense[] = [
     description: 'Transporte Total Férias (Trem Avant Toledo/Madrid + Ouigo/Avlo Barcelona + Metrô Multi 10)',
     category: 'outros',
     categoryLabel: 'Transporte Férias',
-    estimated: 2232, // € 360 * 6.20
+    estimated: 0,
     real: 0,
     paid: false,
     notes: 'Trens Toledo ↔ Madrid (€150), Trem Madrid ↔ Barcelona (€180) e Metrô/Ônibus (€30).'
@@ -492,36 +492,22 @@ export const INITIAL_STATE: AppState = {
   googleSyncEnabled: false,
   exchangeRates: { EUR: 6.20, USD: 5.50 },
   openrouterApiKey: '',
-  openrouterModel: 'google/gemini-2.5-flash:free'
+  openrouterModel: 'google/gemini-2.5-flash'
 };
 
 export function ensureVacationScheduleInState(state: AppState): AppState {
+  // Se o usuário já tem tours salvos, respeitamos as escolhas dele (inclusive exclusões).
+  // Só inserimos os defaults se o array de tours estiver completamente vazio (conta nova / estado virgem).
   const currentTours = state.tours || [];
-  const existingTourIds = new Set(currentTours.map(t => t.id));
-  const newTours = [...currentTours];
-  for (const tour of VACATION_TOURS_2026) {
-    if (!existingTourIds.has(tour.id)) {
-      newTours.push(tour);
-    }
-  }
+  const newTours = currentTours.length === 0 ? [...VACATION_TOURS_2026] : currentTours;
 
+  // Mesma lógica para eventos: só popula se vazio
   const currentEvents = state.events || [];
-  const existingEventIds = new Set(currentEvents.map(e => e.id));
-  const newEvents = [...currentEvents];
-  for (const ev of VACATION_EVENTS_2026) {
-    if (!existingEventIds.has(ev.id)) {
-      newEvents.push(ev);
-    }
-  }
+  const newEvents = currentEvents.length === 0 ? [...VACATION_EVENTS_2026] : currentEvents;
 
+  // Gastos: só popula se vazio
   const currentExpenses = state.financialExpenses || [];
-  const existingExpenseIds = new Set(currentExpenses.map(e => e.id));
-  const newExpenses = [...currentExpenses];
-  for (const exp of VACATION_FINANCIAL_EXPENSES) {
-    if (!existingExpenseIds.has(exp.id)) {
-      newExpenses.push(exp);
-    }
-  }
+  const newExpenses = currentExpenses.length === 0 ? [...VACATION_FINANCIAL_EXPENSES] : currentExpenses;
 
   let notes = state.generalNotes || '';
   if (!notes.includes('Roteiro Completo de Férias na Espanha')) {

@@ -212,7 +212,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
     try { return state.openrouterApiKey || localStorage.getItem(STORAGE_KEY_API_KEY) || localStorage.getItem('openrouter_api_key') || ''; } catch { return ''; }
   });
   const [selectedModel, setSelectedModel] = useState(() => {
-    try { return state.openrouterModel || localStorage.getItem(STORAGE_KEY_MODEL) || localStorage.getItem('openrouter_model') || 'google/gemini-2.5-flash:free'; } catch { return 'google/gemini-2.5-flash:free'; }
+    try { return state.openrouterModel || localStorage.getItem(STORAGE_KEY_MODEL) || localStorage.getItem('openrouter_model') || 'google/gemini-2.5-flash'; } catch { return 'google/gemini-2.5-flash'; }
   });
 
   const [dbExpenses, setDbExpenses] = useState<any[]>([]);
@@ -247,16 +247,18 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
         localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activeSessionId);
       } catch {}
 
-      // ENVIAR PARA O SUPABASE EM TEMPO REAL
-      // Usa latestExtendedStateRef.current (sempre fresco) em vez de 'state' (prop stale)
-      // para não sobrescrever checklists ou outros dados que foram atualizados desde o último render.
+      // ENVIAR PARA O SUPABASE — usa setTimeout para sair do ciclo de render atual
+      // e evitar o warning "Cannot update a component while rendering a different component"
       if (updateExtendedState) {
         const currentState = latestExtendedStateRef.current;
+        const sessionsCopy = sessions;
         if (currentState) {
-          updateExtendedState({
-            ...currentState,
-            chatSessions: sessions
-          });
+          setTimeout(() => {
+            updateExtendedState({
+              ...latestExtendedStateRef.current,
+              chatSessions: sessionsCopy
+            });
+          }, 0);
         }
       }
     }
@@ -435,8 +437,8 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
       localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activeSessionId);
     } catch {}
 
-    if (updateExtendedState && state) {
-      updateExtendedState({ ...state, chatSessions: sessions });
+    if (updateExtendedState) {
+      updateExtendedState({ ...latestExtendedStateRef.current, chatSessions: sessions });
     }
 
     setShowUnsavedWarningModal(false);
@@ -475,7 +477,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
         }));
 
       const payload = {
-        model: selectedModel || 'google/gemini-2.5-flash:free',
+        model: selectedModel || 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemCtx },
           ...history
@@ -878,7 +880,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
                       <strong>1. Obter a chave:</strong> Crie uma conta em <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="underline font-bold text-blue-600 dark:text-blue-400">openrouter.ai</a> e gere sua API Key.
                     </p>
                     <p>
-                      <strong>2. Modelos Gratuitos:</strong> Para usar sem custos, insira <strong>google/gemini-2.5-flash:free</strong>.
+                      <strong>2. Modelos Gratuitos:</strong> Para usar sem custos, insira <strong>google/gemini-2.5-flash</strong>.
                     </p>
                   </div>
 
@@ -898,7 +900,7 @@ export default function ElenaAssistant({ state }: ElenaAssistantProps) {
                       <label className="block text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Modelo Desejado</label>
                       <input
                         type="text"
-                        placeholder="Ex: google/gemini-2.5-flash:free"
+                        placeholder="Ex: google/gemini-2.5-flash"
                         value={tempModel}
                         onChange={e => setTempModel(e.target.value)}
                         className="w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 font-mono"

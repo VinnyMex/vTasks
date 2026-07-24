@@ -222,6 +222,9 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncingAI, setIsSyncingAI] = useState(false);
 
+  // Timestamp do último save local — o realtime ignora eventos anteriores a este instante
+  const lastSaveTimestampRef = useRef<number>(0);
+
   // Carregar todos os dados ao iniciar — só uma vez por user_id
   const loadedUserIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -248,19 +251,24 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
         (payload: any) => {
           const newProfile = payload.new;
           if (!newProfile?.extended_state) return;
+          // Ignora o echo do próprio save local (evita sobrescrever estado atual com o que acabou de ser salvo)
+          if (Date.now() - lastSaveTimestampRef.current < 5000) return;
           // Usa ref para comparar sem depender do closure — evita loop e dados stale
           const current = extendedStateRef.current;
           if (JSON.stringify(newProfile.extended_state) === JSON.stringify(current)) return;
-          // Só aplica se o evento vier de outra aba/dispositivo (updated_at mais recente)
-          // e nunca sobrescreve checklists com dados sem itens
+          // Só aplica dados vindos de outra aba/dispositivo
           const remoteExt = newProfile.extended_state;
           const hasChecklistData = remoteExt.checklists && Object.keys(remoteExt.checklists).length > 0 &&
             Object.values(remoteExt.checklists).some((arr: any) => Array.isArray(arr) && arr.length > 0);
           setProfile(newProfile);
-          setExtendedState(prev => ({
-            ...remoteExt,
-            checklists: hasChecklistData ? remoteExt.checklists : (prev.checklists || remoteExt.checklists)
-          }));
+          setExtendedState(prev => {
+            const next = {
+              ...remoteExt,
+              checklists: hasChecklistData ? remoteExt.checklists : (prev.checklists || remoteExt.checklists)
+            };
+            extendedStateRef.current = next;
+            return next;
+          });
         }
       )
       .subscribe();
@@ -376,6 +384,21 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
       }
 
       extState = ensureVacationScheduleInState(extState);
+
+      // Limpeza de estimativas legadas pré-preenchidas dos itens padrão
+      const oldMockValues: Record<string, number> = {
+        fe_1: 1000, fe_2: 400, fe_3: 800, fe_4: 1500, fe_5: 12000,
+        fe_6: 1800, fe_7: 5500, fe_8: 8000, fe_9: 2500, fe_10: 18000, fe_11: 1200,
+        fe_ferias_atracoes: 1240, fe_ferias_alimentacao: 3038, fe_ferias_transporte: 2232
+      };
+      if (extState.financialExpenses) {
+        extState.financialExpenses = extState.financialExpenses.map(exp => {
+          if (oldMockValues[exp.id] !== undefined && exp.estimated === oldMockValues[exp.id]) {
+            return { ...exp, estimated: 0 };
+          }
+          return exp;
+        });
+      }
 
       // Sincronizar credenciais do OpenRouter entre o estado do Supabase e o localStorage local
       if (extState.openrouterApiKey) {
@@ -570,7 +593,7 @@ export function ImigracaoProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     
     const key = extendedState.openrouterApiKey || localStorage.getItem('openrouter_api_key') || localStorage.getItem('vtask_openrouter_api_key_v2');
-    const model = extendedState.openrouterModel || localStorage.getItem('openrouter_model') || localStorage.getItem('vtask_openrouter_model_v2') || 'google/gemini-2.5-flash:free';
+    const model = extendedState.openrouterModel || localStorage.getItem('openrouter_model') || localStorage.getItem('vtask_openrouter_model_v2') || 'google/gemini-2.5-flash';
     
     if (!key) {
       alert("Configuração de API do vTask Agent Requerida!\n\nPara sincronizar a jornada personalizada com Inteligência Artificial, você precisa cadastrar a sua API Key da OpenRouter.\n\nComo cadastrar:\n1. Abra o chatbot vTask Agent no canto inferior direito.\n2. Clique no ícone de engrenagem de configurações.\n3. Insira sua API Key do OpenRouter e salve.\n4. Tente sincronizar novamente!");
@@ -785,6 +808,8 @@ Retorne estritamente o JSON pronto para ser parseado.`;
         console.warn("Erro ao salvar extended_state no Supabase:", error.message);
         setSyncStatus('error');
       } else {
+        // Marca o timestamp do save para o realtime ignorar o echo desta gravação
+        lastSaveTimestampRef.current = Date.now();
         setSyncStatus('saved');
         setLastSyncTime(new Date().toLocaleTimeString('pt-BR'));
       }
@@ -797,7 +822,8 @@ Retorne estritamente o JSON pronto para ser parseado.`;
   async function updateExtendedState(newState: AppState) {
     if (!user) return;
     extendedStateRef.current = newState;
-    setExtendedState(newState);
+    // Usa callback funcional para garantir que o React aplica sobre o estado mais recente
+    setExtendedState(() => newState);
     try { localStorage.setItem('checklist_espanha_app_state_v1', JSON.stringify(newState)); } catch {}
     await persistToSupabase(newState);
   }
@@ -1076,7 +1102,11 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     if (JSON.stringify(newEventsList) === JSON.stringify(currentEvents)) {
       return;
     }
-    setExtendedState(prev => ({ ...prev, events: newEventsList }));
+    setExtendedState(prev => {
+      const next = { ...prev, events: newEventsList };
+      extendedStateRef.current = next;
+      return next;
+    });
   }, [extendedState.familyMembers, extendedState.tours]);
 
   const handleAddEvent = (event: AppEvent) => {
@@ -1728,7 +1758,7 @@ Retorne estritamente o JSON pronto para ser parseado.`;
     lastSyncTime,
     updateOpenRouterConfig: (apiKey: string, model: string) => {
       const cleanKey = apiKey.trim();
-      const cleanModel = model.trim() || 'google/gemini-2.5-flash:free';
+      const cleanModel = model.trim() || 'google/gemini-2.5-flash';
 
       try {
         localStorage.setItem('openrouter_api_key', cleanKey);
